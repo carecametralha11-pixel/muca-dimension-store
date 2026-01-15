@@ -21,23 +21,32 @@ const requestNotificationPermission = async () => {
   return false;
 };
 
+// Play notification sound
+const playNotificationSound = () => {
+  try {
+    const audio = new Audio('/notification.mp3');
+    audio.volume = 1.0;
+    audio.play().catch((e) => {
+      console.log('Could not play notification sound:', e);
+    });
+  } catch (e) {
+    console.log('Error creating audio:', e);
+  }
+};
+
 // Send browser notification
 const sendBrowserNotification = (title: string, body: string, icon?: string) => {
+  // Always play sound
+  playNotificationSound();
+
   if (Notification.permission === 'granted') {
     const notification = new Notification(title, {
       body,
       icon: icon || '/favicon.ico',
       badge: '/favicon.ico',
-      tag: 'admin-notification',
+      tag: `admin-notification-${Date.now()}`,
       requireInteraction: true,
     });
-
-    // Play notification sound
-    try {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleHQGDm+s1OSqWw4AFVWP0+6idBQAAAAAAAAAAAAAAAAAMCEARQAAAQAAAAAAAA==');
-      audio.volume = 0.5;
-      audio.play().catch(() => {});
-    } catch (e) {}
 
     notification.onclick = () => {
       window.focus();
