@@ -21,6 +21,8 @@ export interface SupportMessage {
   message: string;
   isRead: boolean;
   createdAt: Date;
+  attachmentUrl?: string | null;
+  attachmentType?: string | null;
 }
 
 // Hook to check if user is eligible for support chat
@@ -176,6 +178,8 @@ export const useChatMessages = (chatId?: string) => {
         message: msg.message,
         isRead: msg.is_read,
         createdAt: new Date(msg.created_at),
+        attachmentUrl: (msg as any).attachment_url || null,
+        attachmentType: (msg as any).attachment_type || null,
       }));
     },
     enabled: !!chatId,
@@ -201,6 +205,56 @@ export const useSendMessage = () => {
           sender_id: senderId,
           sender_type: senderType,
           message,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', variables.chatId] });
+      queryClient.invalidateQueries({ queryKey: ['all-chats'] });
+    },
+  });
+};
+
+// Hook to send a message with attachment
+export const useSendMessageWithAttachment = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ chatId, senderId, senderType, file }: { 
+      chatId: string; 
+      senderId: string; 
+      senderType: 'user' | 'admin'; 
+      file: File;
+    }) => {
+      // Upload file to storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${chatId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from('chat-attachments')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('chat-attachments')
+        .getPublicUrl(fileName);
+
+      // Insert message with attachment
+      const { data, error } = await supabase
+        .from('support_messages')
+        .insert({
+          chat_id: chatId,
+          sender_id: senderId,
+          sender_type: senderType,
+          message: file.type.startsWith('image/') ? '📷 Imagem' : file.type.startsWith('audio/') ? '🎵 Áudio' : '📎 Anexo',
+          attachment_url: urlData.publicUrl,
+          attachment_type: file.type,
         })
         .select()
         .single();

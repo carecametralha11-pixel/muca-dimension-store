@@ -659,6 +659,8 @@ export type Database = {
       }
       support_messages: {
         Row: {
+          attachment_type: string | null
+          attachment_url: string | null
           chat_id: string
           created_at: string
           id: string
@@ -668,6 +670,8 @@ export type Database = {
           sender_type: string
         }
         Insert: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           chat_id: string
           created_at?: string
           id?: string
@@ -677,6 +681,8 @@ export type Database = {
           sender_type: string
         }
         Update: {
+          attachment_type?: string | null
+          attachment_url?: string | null
           chat_id?: string
           created_at?: string
           id?: string

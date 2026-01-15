@@ -5,6 +5,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ConsultavelItem, { ConsultavelItemData } from '@/components/ConsultavelItem';
 import ConsultavelPurchaseDialog from '@/components/ConsultavelPurchaseDialog';
+import ConsultavelContactForm from '@/components/ConsultavelContactForm';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
@@ -12,6 +13,7 @@ import { useConsultaveis, Consultavel } from '@/hooks/useConsultaveis';
 import { useConsultavelImages } from '@/hooks/useConsultavelImages';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import SupportChatWidget from '@/components/chat/SupportChatWidget';
 
 type CategoryType = 'CT' | 'ST' | '';
 
@@ -417,11 +419,16 @@ const ConsultavelPage = () => {
             </div>
           )}
 
-          {/* Empty State */}
-          {!isLoading && filteredConsultaveis.length === 0 && (
+          {/* Empty State - Show Contact Form when no consultaveis exist */}
+          {!isLoading && consultaveisData.length === 0 && (
+            <ConsultavelContactForm />
+          )}
+
+          {/* Empty State - Show message when filters return no results */}
+          {!isLoading && consultaveisData.length > 0 && filteredConsultaveis.length === 0 && (
             <div className="text-center py-12">
               <p className="text-muted-foreground text-sm">
-                Nenhuma consultável encontrada
+                Nenhuma consultável encontrada com os filtros selecionados
               </p>
             </div>
           )}
@@ -441,6 +448,7 @@ const ConsultavelPage = () => {
       </main>
 
       <Footer />
+      <SupportChatWidget />
     </div>
   );
 };
