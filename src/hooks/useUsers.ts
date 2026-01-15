@@ -73,17 +73,24 @@ export const useUnbanUser = () => {
 
   return useMutation({
     mutationFn: async (userId: string) => {
-      const { error } = await supabase
+      const { error, data } = await supabase
         .from('profiles')
-        .update({ is_banned: false })
-        .eq('id', userId);
+        .update({ is_banned: false, updated_at: new Date().toISOString() })
+        .eq('id', userId)
+        .select();
 
       if (error) throw error;
+      console.log('Unban result:', data);
+      return data;
     },
     onSuccess: () => {
+      // Force refetch immediately
       queryClient.invalidateQueries({ queryKey: ['all-users'] });
+      queryClient.refetchQueries({ queryKey: ['all-users'] });
+      toast.success('Usuário desbanido com sucesso!');
     },
     onError: (error: any) => {
+      console.error('Unban error:', error);
       toast.error(error.message || 'Erro ao desbanir usuário');
     },
   });
