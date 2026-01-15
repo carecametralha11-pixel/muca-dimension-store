@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { 
   FileText, 
   DollarSign, 
@@ -23,7 +24,13 @@ import {
   BadgeCheck,
   Calculator,
   ChevronDown,
-  AlertCircle
+  AlertCircle,
+  QrCode,
+  Printer,
+  Globe,
+  Sparkles,
+  User,
+  Store
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -99,9 +106,44 @@ const steps = [
   },
 ];
 
+// Mode selection options
+const modeOptions = [
+  {
+    id: 'cliente',
+    title: 'Preciso de um Atestado',
+    subtitle: 'Sou cliente e quero pedir meu atestado',
+    description: 'Atestados físicos e digitais credenciados com QR Code para todos os estados do Brasil.',
+    icon: User,
+    color: 'from-cyan-500 to-emerald-500',
+    borderColor: 'border-cyan-500/30 hover:border-cyan-500/60',
+    bgColor: 'from-cyan-500/10 to-emerald-500/10',
+    link: '/pedir-atestado',
+    features: ['QR Code Digital', 'Todo Brasil', 'Rápido'],
+  },
+  {
+    id: 'revendedor',
+    title: 'Quero Revender',
+    subtitle: 'Quero lucrar revendendo atestados',
+    description: 'Sistema 100% automático. Pague R$25 fixo e defina seu próprio preço de venda!',
+    icon: Store,
+    color: 'from-emerald-500 to-green-500',
+    borderColor: 'border-emerald-500/30 hover:border-emerald-500/60',
+    bgColor: 'from-emerald-500/10 to-green-500/10',
+    link: null, // Will scroll down
+    features: ['R$25 Fixo', '100% Lucro', 'Automático'],
+  },
+];
+
 const Atestados = () => {
   const scrollToContent = () => {
     window.scrollTo({ top: window.innerHeight - 100, behavior: 'smooth' });
+  };
+
+  const scrollToRevendedor = () => {
+    const element = document.getElementById('revendedor-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
   };
 
   // State for floating scroll arrow visibility
@@ -161,30 +203,32 @@ const Atestados = () => {
       <Navbar />
       
       <main className="flex-1 relative z-10">
-        {/* Hero Section */}
-        <section className="py-16 md:py-24 relative min-h-[calc(100vh-56px)] flex flex-col justify-center">
+        {/* Mode Selection Hero */}
+        <section className="py-12 md:py-20 relative min-h-[calc(100vh-56px)] flex flex-col justify-center">
           <div className="container mx-auto px-4">
-            <div className="max-w-4xl mx-auto text-center">
+            <div className="max-w-5xl mx-auto text-center">
+              {/* Badge */}
               <motion.div
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5 }}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 mb-8"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-500/20 to-emerald-500/20 border border-emerald-500/30 mb-6"
               >
-                <Zap className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-medium text-emerald-400">Sistema 100% Automático</span>
+                <Sparkles className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-400">Atestados Credenciados - Físicos & Digitais</span>
               </motion.div>
 
+              {/* Main Title */}
               <motion.h1
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1, duration: 0.6 }}
                 className="text-4xl md:text-6xl lg:text-7xl font-black mb-6"
               >
-                <span className="text-white">Revenda Atestados</span>
+                <span className="text-white">Atestados Médicos</span>
                 <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">
-                  Por Apenas R$25
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-emerald-400 to-green-400">
+                  Para Todo o Brasil
                 </span>
               </motion.h1>
 
@@ -192,16 +236,186 @@ const Atestados = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2, duration: 0.5 }}
-                className="text-lg md:text-xl text-white/60 mb-4 max-w-2xl mx-auto"
+                className="text-lg md:text-xl text-white/60 mb-4 max-w-3xl mx-auto"
               >
-                Preço fixo de R$25 por atestado, independente da quantidade de dias.
+                Versões <span className="text-cyan-400 font-semibold">físicas e digitais</span> credenciadas para 
+                <span className="text-emerald-400 font-semibold"> todos os estados e cidades</span>.
               </motion.p>
 
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.25, duration: 0.5 }}
-                className="text-lg md:text-xl text-emerald-400 font-semibold mb-6 max-w-2xl mx-auto"
+                className="text-base md:text-lg text-white/50 mb-10 max-w-2xl mx-auto"
+              >
+                Versão digital com <span className="text-cyan-400 font-semibold">QR Code</span> contendo todos os dados do paciente para validação instantânea.
+              </motion.p>
+
+              {/* Mode Selection Cards */}
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.5 }}
+                className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto"
+              >
+                {modeOptions.map((mode, index) => (
+                  <motion.div
+                    key={mode.id}
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.35 + index * 0.1, duration: 0.5 }}
+                    className="group"
+                  >
+                    {mode.link ? (
+                      <Link to={mode.link}>
+                        <Card className={`bg-gradient-to-br ${mode.bgColor} ${mode.borderColor} transition-all duration-300 h-full hover:-translate-y-2 hover:shadow-xl cursor-pointer`}>
+                          <CardContent className="p-6 md:p-8">
+                            <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${mode.color} p-0.5 group-hover:scale-110 transition-transform`}>
+                              <div className="w-full h-full bg-black/80 rounded-2xl flex items-center justify-center">
+                                <mode.icon className="w-8 h-8 text-white" />
+                              </div>
+                            </div>
+                            <h3 className="text-xl md:text-2xl font-bold text-white mb-1">{mode.title}</h3>
+                            <p className="text-sm text-white/60 mb-4">{mode.subtitle}</p>
+                            <p className="text-sm text-white/50 mb-6">{mode.description}</p>
+                            
+                            <div className="flex flex-wrap justify-center gap-2 mb-6">
+                              {mode.features.map((feature) => (
+                                <span key={feature} className="px-3 py-1 text-xs bg-white/10 rounded-full text-white/70">
+                                  {feature}
+                                </span>
+                              ))}
+                            </div>
+                            
+                            <Button 
+                              className={`w-full bg-gradient-to-r ${mode.color} text-white font-bold py-5 text-base hover:opacity-90 transition-all group-hover:scale-[1.02]`}
+                            >
+                              Peça Seu Atestado
+                              <ArrowRight className="w-5 h-5 ml-2" />
+                            </Button>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    ) : (
+                      <Card 
+                        onClick={scrollToRevendedor}
+                        className={`bg-gradient-to-br ${mode.bgColor} ${mode.borderColor} transition-all duration-300 h-full hover:-translate-y-2 hover:shadow-xl cursor-pointer`}
+                      >
+                        <CardContent className="p-6 md:p-8">
+                          <div className={`w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br ${mode.color} p-0.5 group-hover:scale-110 transition-transform`}>
+                            <div className="w-full h-full bg-black/80 rounded-2xl flex items-center justify-center">
+                              <mode.icon className="w-8 h-8 text-white" />
+                            </div>
+                          </div>
+                          <h3 className="text-xl md:text-2xl font-bold text-white mb-1">{mode.title}</h3>
+                          <p className="text-sm text-white/60 mb-4">{mode.subtitle}</p>
+                          <p className="text-sm text-white/50 mb-6">{mode.description}</p>
+                          
+                          <div className="flex flex-wrap justify-center gap-2 mb-6">
+                            {mode.features.map((feature) => (
+                              <span key={feature} className="px-3 py-1 text-xs bg-white/10 rounded-full text-white/70">
+                                {feature}
+                              </span>
+                            ))}
+                          </div>
+                          
+                          <Button 
+                            className={`w-full bg-gradient-to-r ${mode.color} text-white font-bold py-5 text-base hover:opacity-90 transition-all group-hover:scale-[1.02]`}
+                          >
+                            Ver Mais
+                            <ChevronDown className="w-5 h-5 ml-2" />
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </motion.div>
+                ))}
+              </motion.div>
+
+              {/* Trust Badges */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.5 }}
+                className="mt-10 flex flex-wrap justify-center gap-6"
+              >
+                {[
+                  { icon: Shield, text: 'Credenciado', color: 'text-emerald-400' },
+                  { icon: QrCode, text: 'QR Code Digital', color: 'text-cyan-400' },
+                  { icon: Globe, text: 'Todo Brasil', color: 'text-purple-400' },
+                  { icon: Printer, text: 'Físico & Digital', color: 'text-amber-400' },
+                ].map((item) => (
+                  <div key={item.text} className="flex items-center gap-2 text-sm text-white/60">
+                    <item.icon className={`w-5 h-5 ${item.color}`} />
+                    {item.text}
+                  </div>
+                ))}
+              </motion.div>
+            </div>
+          </div>
+
+          {/* Animated Scroll Arrow */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer"
+            onClick={scrollToContent}
+          >
+            <motion.div
+              animate={{ y: [0, 10, 0] }}
+              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
+              className="flex flex-col items-center gap-2"
+            >
+              <span className="text-xs text-white/50">Role para ver mais</span>
+              <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
+                <ChevronDown className="w-5 h-5 text-emerald-400" />
+              </div>
+            </motion.div>
+          </motion.div>
+        </section>
+
+        {/* Revendedor Section */}
+        <section id="revendedor-section" className="py-16 md:py-24 relative">
+          <div className="container mx-auto px-4">
+            <div className="max-w-4xl mx-auto text-center mb-12">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-emerald-500/10 border border-emerald-500/30 mb-6"
+              >
+                <Store className="w-4 h-4 text-emerald-400" />
+                <span className="text-sm font-medium text-emerald-400">Área do Revendedor</span>
+              </motion.div>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-3xl md:text-5xl font-black mb-4"
+              >
+                <span className="text-white">Revenda Atestados</span>
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-green-400">
+                  Por Apenas R$25
+                </span>
+              </motion.h2>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-lg text-white/60 mb-4"
+              >
+                Preço fixo de R$25 por atestado, independente da quantidade de dias.
+              </motion.p>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="text-lg text-emerald-400 font-semibold mb-6"
               >
                 VOCÊ define o preço de venda e fica com TODO o lucro!
               </motion.p>
@@ -209,14 +423,14 @@ const Atestados = () => {
               {/* Read Full Page Warning */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.28, duration: 0.5 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 className="max-w-lg mx-auto mb-6"
               >
                 <div className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-amber-500/10 border border-amber-500/30">
                   <AlertCircle className="w-4 h-4 text-amber-400 flex-shrink-0" />
                   <span className="text-sm text-amber-300">
-                    Quer ser revendedor e ganhar de casa? <strong>Leia a página completa até embaixo!</strong>
+                    Quer ser revendedor e ganhar de casa? <strong>Leia a página completa!</strong>
                   </span>
                 </div>
               </motion.div>
@@ -224,8 +438,8 @@ const Atestados = () => {
               {/* Price Example */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3, duration: 0.5 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 className="max-w-lg mx-auto mb-10"
               >
                 <Card className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 border-emerald-500/40">
@@ -258,8 +472,8 @@ const Atestados = () => {
 
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 className="flex flex-wrap justify-center gap-4"
               >
                 <a href="https://facilatestado.site/auth?ref=K89CZ6JV" target="_blank" rel="noopener noreferrer">
@@ -277,8 +491,8 @@ const Atestados = () => {
               {/* Stats */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 className="grid grid-cols-3 gap-6 mt-12 max-w-md mx-auto"
               >
                 {[
@@ -294,28 +508,7 @@ const Atestados = () => {
               </motion.div>
             </div>
           </div>
-
-          {/* Animated Scroll Arrow */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8 }}
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2 cursor-pointer"
-            onClick={scrollToContent}
-          >
-            <motion.div
-              animate={{ y: [0, 10, 0] }}
-              transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
-              className="flex flex-col items-center gap-2"
-            >
-              <span className="text-xs text-white/50">Role para ver mais</span>
-              <div className="w-10 h-10 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-                <ChevronDown className="w-5 h-5 text-emerald-400" />
-              </div>
-            </motion.div>
-          </motion.div>
         </section>
-
         {/* Benefits Section */}
         <section className="py-16 relative">
           <div className="container mx-auto px-4">
