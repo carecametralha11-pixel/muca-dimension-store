@@ -8,10 +8,55 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import logo from '@/assets/logo-muca.png';
+import BanCheckOverlay from '@/components/BanCheckOverlay';
+import { supabase } from '@/integrations/supabase/client';
+
+// Play ban message using Web Speech API
+const playBanMessageTTS = async () => {
+  let message = 'Você foi banido do sistema. Sua conta foi suspensa.';
+  
+  try {
+    const { data } = await (supabase
+      .from('ban_messages' as any)
+      .select('message')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle() as any);
+    
+    if (data?.message) {
+      message = data.message;
+    }
+  } catch (error) {
+    console.error('Error fetching ban message:', error);
+  }
+
+  if ('speechSynthesis' in window) {
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find(voice => 
+      voice.lang.includes('pt') || voice.lang.includes('BR')
+    );
+    if (ptVoice) {
+      utterance.voice = ptVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  }
+};
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
+  const [showBanCheck, setShowBanCheck] = useState(false);
+  const [isBannedUser, setIsBannedUser] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -20,6 +65,16 @@ const Auth = () => {
   });
   const { login, register, user } = useAuth();
   const navigate = useNavigate();
+
+  // Load voices on mount
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     if (user) {
@@ -30,15 +85,36 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setIsBannedUser(false);
 
     try {
       if (isLogin) {
+        // Show the identity check overlay
+        setShowBanCheck(true);
+
+        // First, check if user exists and is banned BEFORE attempting login
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('is_banned')
+          .eq('email', formData.email)
+          .maybeSingle();
+
+        if (profileData?.is_banned) {
+          // User is banned - show banned state and play audio
+          setIsBannedUser(true);
+          await playBanMessageTTS();
+          setIsLoading(false);
+          return; // Stay on the overlay
+        }
+
+        // Proceed with login if not banned
         const { error } = await login(formData.email, formData.password);
         if (error) {
+          setShowBanCheck(false);
           toast.error(error);
         } else {
+          // Login successful, overlay will close automatically
           toast.success('Login realizado com sucesso!');
-          navigate('/');
         }
       } else {
         if (formData.password !== formData.confirmPassword) {
@@ -65,12 +141,30 @@ const Auth = () => {
         }
       }
     } finally {
-      setIsLoading(false);
+      if (!isBannedUser) {
+        setIsLoading(false);
+      }
+    }
+  };
+
+  const handleOverlayComplete = () => {
+    setShowBanCheck(false);
+    if (!isBannedUser) {
+      navigate('/');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12">
+    <>
+      {/* Ban Check Overlay */}
+      <BanCheckOverlay
+        isVisible={showBanCheck}
+        isBanned={isBannedUser}
+        onComplete={handleOverlayComplete}
+        banMessage="Sua conta foi banida. Acesso negado ao sistema."
+      />
+
+      <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -188,6 +282,7 @@ const Auth = () => {
         </Card>
       </motion.div>
     </div>
+    </>
   );
 };
 

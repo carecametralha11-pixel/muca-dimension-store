@@ -9,6 +9,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import SecurityProtection from "@/components/SecurityProtection";
 import SupportChatWidget from "@/components/chat/SupportChatWidget";
 import ScrollToTop from "@/components/ScrollToTop";
+import GlobalBanOverlay from "@/components/GlobalBanOverlay";
 import { Loader2 } from "lucide-react";
 
 // Lazy load pages for better performance
@@ -75,6 +76,7 @@ const App = () => (
             </Routes>
           </Suspense>
           <SupportChatWidget />
+          <GlobalBanOverlay />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
