@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Navigate, Link } from 'react-router-dom';
-import { Wallet, QrCode, Copy, Check, Loader2, ArrowLeft, RefreshCw } from 'lucide-react';
+import { Wallet, QrCode, Copy, Check, Loader2, ArrowLeft, RefreshCw, Clock, AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import PaymentSuccessDialog from '@/components/PaymentSuccessDialog';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
+const PIX_EXPIRATION_MINUTES = 10;
+
 const AddBalance = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { data: balance = 0 } = useBalance(user?.id);
@@ -24,6 +26,9 @@ const AddBalance = () => {
   const [qrCodeData, setQrCodeData] = useState<{ qr_code: string; qr_code_base64: string } | null>(null);
   const [showSuccessDialog, setShowSuccessDialog] = useState(false);
   const [paidAmount, setPaidAmount] = useState(0);
+  const [timeLeft, setTimeLeft] = useState<number>(PIX_EXPIRATION_MINUTES * 60);
+  const [paymentCreatedAt, setPaymentCreatedAt] = useState<Date | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
 
   const { data: payment } = usePixPayment(currentPaymentId || undefined);
 
@@ -42,18 +47,52 @@ const AddBalance = () => {
         .maybeSingle();
 
       if (data) {
-        setCurrentPaymentId(data.id);
-        setQrCodeData({
-          qr_code: data.qr_code || '',
-          qr_code_base64: data.qr_code_base64 || '',
-        });
-        setAmount(data.amount.toString());
-        setShowQR(true);
+        const createdAt = new Date(data.created_at);
+        const now = new Date();
+        const elapsedSeconds = Math.floor((now.getTime() - createdAt.getTime()) / 1000);
+        const remainingSeconds = PIX_EXPIRATION_MINUTES * 60 - elapsedSeconds;
+        
+        if (remainingSeconds > 0) {
+          setCurrentPaymentId(data.id);
+          setQrCodeData({
+            qr_code: data.qr_code || '',
+            qr_code_base64: data.qr_code_base64 || '',
+          });
+          setAmount(data.amount.toString());
+          setShowQR(true);
+          setPaymentCreatedAt(createdAt);
+          setTimeLeft(remainingSeconds);
+          setIsExpired(false);
+        } else {
+          // Payment expired, mark it
+          setIsExpired(true);
+        }
       }
     };
 
     checkPendingPayment();
   }, [user]);
+
+  // Timer countdown
+  useEffect(() => {
+    if (!showQR || !paymentCreatedAt) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const elapsedSeconds = Math.floor((now.getTime() - paymentCreatedAt.getTime()) / 1000);
+      const remainingSeconds = PIX_EXPIRATION_MINUTES * 60 - elapsedSeconds;
+
+      if (remainingSeconds <= 0) {
+        setTimeLeft(0);
+        setIsExpired(true);
+        clearInterval(interval);
+      } else {
+        setTimeLeft(remainingSeconds);
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [showQR, paymentCreatedAt]);
 
   // Watch for payment approval
   useEffect(() => {
@@ -64,8 +103,18 @@ const AddBalance = () => {
       setCurrentPaymentId(null);
       setQrCodeData(null);
       setAmount('');
+      setPaymentCreatedAt(null);
+      setTimeLeft(PIX_EXPIRATION_MINUTES * 60);
+      setIsExpired(false);
     }
   }, [payment?.status, payment?.amount]);
+
+  // Format time display
+  const formatTime = useCallback((seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  }, []);
 
   if (authLoading) {
     return (
@@ -111,6 +160,9 @@ const AddBalance = () => {
         qr_code_base64: result.payment.qr_code_base64,
       });
       setShowQR(true);
+      setPaymentCreatedAt(new Date());
+      setTimeLeft(PIX_EXPIRATION_MINUTES * 60);
+      setIsExpired(false);
       toast.success('QR Code gerado com sucesso!');
     } catch (error: any) {
       console.error('Erro ao gerar QR Code:', error);
@@ -134,6 +186,9 @@ const AddBalance = () => {
     setCurrentPaymentId(null);
     setQrCodeData(null);
     setAmount('');
+    setPaymentCreatedAt(null);
+    setTimeLeft(PIX_EXPIRATION_MINUTES * 60);
+    setIsExpired(false);
   };
 
   const quickAmounts = [20, 30, 50, 100, 200, 500];
@@ -234,13 +289,27 @@ const AddBalance = () => {
                     </p>
                   </div>
 
+                  {/* Timer */}
+                  <div className={`p-3 rounded-lg border ${isExpired ? 'bg-destructive/10 border-destructive/50' : timeLeft <= 60 ? 'bg-yellow-500/10 border-yellow-500/50' : 'bg-secondary/50 border-border'}`}>
+                    <div className="flex items-center justify-center gap-2">
+                      {isExpired ? (
+                        <AlertTriangle className="h-4 w-4 text-destructive" />
+                      ) : (
+                        <Clock className={`h-4 w-4 ${timeLeft <= 60 ? 'text-yellow-500' : 'text-muted-foreground'}`} />
+                      )}
+                      <span className={`text-sm font-mono font-semibold ${isExpired ? 'text-destructive' : timeLeft <= 60 ? 'text-yellow-500' : 'text-foreground'}`}>
+                        {isExpired ? 'QR Code Expirado' : `Expira em: ${formatTime(timeLeft)}`}
+                      </span>
+                    </div>
+                  </div>
+
                   {/* QR Code */}
                   <div className="flex justify-center">
                     {qrCodeData?.qr_code_base64 ? (
                       <img 
                         src={`data:image/png;base64,${qrCodeData.qr_code_base64}`}
                         alt="QR Code PIX"
-                        className="w-48 h-48 rounded-lg"
+                        className={`w-48 h-48 rounded-lg ${isExpired ? 'opacity-50 grayscale' : ''}`}
                       />
                     ) : (
                       <div className="w-48 h-48 bg-secondary rounded-lg flex items-center justify-center">
@@ -250,24 +319,34 @@ const AddBalance = () => {
                   </div>
 
                   {/* Status indicator */}
-                  <div className="p-3 rounded-lg bg-secondary/50 border border-border">
-                    <div className="flex items-center justify-center gap-2">
-                      <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">
-                        Aguardando pagamento...
-                      </span>
+                  {!isExpired && (
+                    <div className="p-3 rounded-lg bg-secondary/50 border border-border">
+                      <div className="flex items-center justify-center gap-2">
+                        <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Aguardando pagamento...
+                        </span>
+                      </div>
+                      <p className="text-xs text-center text-muted-foreground mt-2">
+                        O saldo será adicionado automaticamente após a confirmação
+                      </p>
                     </div>
-                    <p className="text-xs text-center text-muted-foreground mt-2">
-                      O saldo será adicionado automaticamente após a confirmação
-                    </p>
-                  </div>
+                  )}
+
+                  {isExpired && (
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/50">
+                      <p className="text-sm text-center text-destructive">
+                        O QR Code expirou. Por favor, gere um novo.
+                      </p>
+                    </div>
+                  )}
 
                   {/* Copy PIX Key */}
                   <Button 
                     variant="outline" 
                     onClick={handleCopyPix}
                     className="w-full"
-                    disabled={!qrCodeData?.qr_code}
+                    disabled={!qrCodeData?.qr_code || isExpired}
                   >
                     {copied ? (
                       <>
