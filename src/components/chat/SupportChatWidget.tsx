@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import ImagePreviewModal from './ImagePreviewModal';
 
 // Global event emitter for opening chat
 export const openSupportChat = () => {
@@ -28,6 +29,7 @@ const SupportChatWidget: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -213,8 +215,8 @@ const SupportChatWidget: React.FC = () => {
               <img 
                 src={msg.attachmentUrl} 
                 alt="Imagem" 
-                className="max-w-full rounded-md max-h-48 object-cover cursor-pointer"
-                onClick={() => window.open(msg.attachmentUrl, '_blank')}
+                className="max-w-full rounded-md max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                onClick={() => setPreviewImage(msg.attachmentUrl)}
               />
             ) : msg.attachmentType?.startsWith('audio/') ? (
               <audio controls className="max-w-full">
@@ -262,6 +264,13 @@ const SupportChatWidget: React.FC = () => {
 
   return (
     <>
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        imageUrl={previewImage}
+        isOpen={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
+
       {/* Hidden file input */}
       <input
         type="file"
