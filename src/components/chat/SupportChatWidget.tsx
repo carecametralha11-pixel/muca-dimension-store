@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Mic, MicOff, Paperclip, Video } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Mic, MicOff, Paperclip } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -23,7 +23,7 @@ export const openSupportChat = () => {
 };
 
 const SupportChatWidget: React.FC = () => {
-  const { user, profile, isAdmin } = useAuth();
+  const { user, profile, isAdmin, isLoading } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -251,8 +251,14 @@ const SupportChatWidget: React.FC = () => {
     );
   };
 
-  // Don't show widget if user is not logged in OR if user is admin (they use the panel)
-  if (!user || isAdmin) return null;
+  // Don't show while loading auth state
+  if (isLoading) return null;
+  
+  // Don't show for non-logged-in users
+  if (!user) return null;
+  
+  // Don't show for admins (they use admin panel)
+  if (isAdmin) return null;
 
   return (
     <>
@@ -265,20 +271,21 @@ const SupportChatWidget: React.FC = () => {
         onChange={handleFileSelect}
       />
 
-      {/* Chat Button */}
+      {/* Chat Button - Always visible for logged-in non-admin users */}
       <AnimatePresence>
         {!isOpen && (
           <motion.div
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0, opacity: 0 }}
-            className="fixed bottom-4 right-4 z-50"
+            className="fixed bottom-6 right-6 z-[9999]"
           >
             <Button
               onClick={() => setIsOpen(true)}
-              className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg"
+              className="h-14 w-14 rounded-full bg-white hover:bg-gray-100 shadow-xl border-2 border-primary"
+              title="Chat de Suporte"
             >
-              <MessageCircle className="h-6 w-6" />
+              <MessageCircle className="h-6 w-6 text-primary" />
             </Button>
           </motion.div>
         )}
@@ -291,7 +298,7 @@ const SupportChatWidget: React.FC = () => {
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-4 right-4 z-50 w-[350px] sm:w-[400px] h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col overflow-hidden"
+            className="fixed bottom-6 right-6 z-[9999] w-[350px] sm:w-[400px] h-[500px] bg-card border border-border rounded-lg shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
