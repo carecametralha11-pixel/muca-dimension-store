@@ -73,8 +73,8 @@ const App = () => (
               <Route path="/solicitar-conta" element={<ProtectedRoute><SolicitarConta /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
-            <SupportChatWidget />
           </Suspense>
+          <SupportChatWidget />
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
