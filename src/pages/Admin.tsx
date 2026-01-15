@@ -62,7 +62,7 @@ import { useCards, useCreateCard, useUpdateCard, useDeleteCard, useCreateMultipl
 import { CardsBulkManager } from '@/components/admin/CardsBulkManager';
 import { useAllCardMixes, useCreateCardMix, useUpdateCardMix, useDeleteCardMix, CardMix } from '@/hooks/useCardMixes';
 import { useAllPurchases } from '@/hooks/usePurchases';
-import { useAllUsers, useBanUser, useDeleteUser } from '@/hooks/useUsers';
+import { useAllUsers, useToggleBanUser, useDeleteUser } from '@/hooks/useUsers';
 import { useFeedbacks, useDeleteFeedback, useUpdateFeedback, Feedback } from '@/hooks/useFeedbacks';
 import { useUpdateBalance } from '@/hooks/useBalance';
 import { useAllModuleMedia, useCreateModuleMedia, useUpdateModuleMedia, useDeleteModuleMedia, ModuleMedia, uploadMediaFile, deleteMediaFile } from '@/hooks/useModuleMedia';
@@ -111,7 +111,7 @@ const Admin = () => {
   const { data: pixPayments = [], isLoading: pixLoading } = useAllPixPayments();
   const { data: allConsultavelImages = [] } = useAllConsultavelImages();
   const { data: feedbacks = [], isLoading: feedbacksLoading } = useFeedbacks();
-  const banUser = useBanUser();
+  const banUser = useToggleBanUser();
   const deleteUser = useDeleteUser();
   const deleteFeedback = useDeleteFeedback();
   const updateFeedback = useUpdateFeedback();
