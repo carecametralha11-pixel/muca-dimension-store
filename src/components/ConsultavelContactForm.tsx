@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCreateChat, useSendMessage, useUserChat } from '@/hooks/useSupportChat';
+import { openSupportChat } from '@/components/chat/SupportChatWidget';
 import { toast } from 'sonner';
 
 interface ConsultavelContactFormProps {
@@ -62,7 +63,13 @@ const ConsultavelContactForm: React.FC<ConsultavelContactFormProps> = ({ onChatS
         message,
       });
 
-      toast.success('Mensagem enviada! O suporte entrará em contato.');
+      toast.success('Mensagem enviada! Abrindo chat...');
+      
+      // Open the chat widget automatically
+      setTimeout(() => {
+        openSupportChat();
+      }, 500);
+      
       onChatStarted?.();
     } catch (error) {
       console.error('Error starting chat:', error);

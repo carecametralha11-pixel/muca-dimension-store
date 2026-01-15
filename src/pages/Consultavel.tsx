@@ -13,7 +13,6 @@ import { useConsultaveis, Consultavel } from '@/hooks/useConsultaveis';
 import { useConsultavelImages } from '@/hooks/useConsultavelImages';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
-import SupportChatWidget from '@/components/chat/SupportChatWidget';
 
 type CategoryType = 'CT' | 'ST' | '';
 
@@ -448,7 +447,6 @@ const ConsultavelPage = () => {
       </main>
 
       <Footer />
-      <SupportChatWidget />
     </div>
   );
 };
