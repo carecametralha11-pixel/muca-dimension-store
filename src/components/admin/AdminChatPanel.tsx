@@ -1,10 +1,21 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, Loader2, X, User, Clock, CheckCheck, Mic, MicOff, Paperclip, Volume2, Bell } from 'lucide-react';
+import { MessageCircle, Send, Loader2, X, User, Clock, CheckCheck, Mic, MicOff, Paperclip, Volume2, Bell, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   useAllChats,
@@ -13,7 +24,10 @@ import {
   useMarkAsRead,
   useCloseChat,
   useSendMessageWithAttachment,
-  type SupportChat
+  useDeleteChat,
+  useDeleteMessage,
+  type SupportChat,
+  type SupportMessage
 } from '@/hooks/useSupportChat';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -26,6 +40,9 @@ const AdminChatPanel: React.FC = () => {
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [chatToDelete, setChatToDelete] = useState<SupportChat | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<{ id: string; chatId: string } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -39,6 +56,8 @@ const AdminChatPanel: React.FC = () => {
   const sendMessageWithAttachment = useSendMessageWithAttachment();
   const markAsRead = useMarkAsRead();
   const closeChat = useCloseChat();
+  const deleteChat = useDeleteChat();
+  const deleteMessage = useDeleteMessage();
 
   // Enable admin notifications with sound
   const { playNotificationSound } = useAdminChatNotifications();
@@ -87,6 +106,37 @@ const AdminChatPanel: React.FC = () => {
     await closeChat.mutateAsync(selectedChat.id);
     toast.success('Chat encerrado com sucesso!');
     setSelectedChat(null);
+  };
+
+  const handleDeleteChat = async () => {
+    if (!chatToDelete) return;
+    
+    try {
+      await deleteChat.mutateAsync(chatToDelete.id);
+      toast.success('Chat excluído com sucesso!');
+      if (selectedChat?.id === chatToDelete.id) {
+        setSelectedChat(null);
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+      toast.error('Erro ao excluir chat.');
+    } finally {
+      setChatToDelete(null);
+    }
+  };
+
+  const handleDeleteMessage = async () => {
+    if (!messageToDelete) return;
+    
+    try {
+      await deleteMessage.mutateAsync({ messageId: messageToDelete.id, chatId: messageToDelete.chatId });
+      toast.success('Mensagem excluída!');
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      toast.error('Erro ao excluir mensagem.');
+    } finally {
+      setMessageToDelete(null);
+    }
   };
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,59 +238,91 @@ const AdminChatPanel: React.FC = () => {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const renderMessage = (msg: any) => {
+  const handleDownloadImage = async (url: string) => {
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `imagem_${Date.now()}.${blob.type.split('/')[1] || 'jpg'}`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      toast.error('Erro ao baixar imagem.');
+    }
+  };
+
+  const renderMessage = (msg: SupportMessage) => {
     const isAttachment = msg.attachmentUrl && msg.attachmentType;
+    const isAdminMessage = msg.senderType === 'admin';
     
     return (
       <div
         key={msg.id}
-        className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}
+        className={`flex ${isAdminMessage ? 'justify-end' : 'justify-start'} group`}
       >
-        <div
-          className={`max-w-[80%] rounded-lg px-3 py-2 ${
-            msg.senderType === 'admin'
-              ? 'bg-primary text-primary-foreground'
-              : 'bg-muted text-foreground'
-          }`}
-        >
-          {isAttachment ? (
-            msg.attachmentType?.startsWith('image/') ? (
-              <img 
-                src={msg.attachmentUrl} 
-                alt="Imagem" 
-                className="max-w-full rounded-md max-h-48 object-cover cursor-pointer"
-                onClick={() => window.open(msg.attachmentUrl, '_blank')}
-              />
-            ) : msg.attachmentType?.startsWith('audio/') ? (
-              <audio controls className="max-w-full">
-                <source src={msg.attachmentUrl} type={msg.attachmentType} />
-                Seu navegador não suporta áudio.
-              </audio>
-            ) : msg.attachmentType?.startsWith('video/') ? (
-              <video controls className="max-w-full max-h-48 rounded-md">
-                <source src={msg.attachmentUrl} type={msg.attachmentType} />
-                Seu navegador não suporta vídeo.
-              </video>
+        <div className="relative">
+          <div
+            className={`max-w-[80%] rounded-lg px-3 py-2 ${
+              isAdminMessage
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-foreground'
+            }`}
+          >
+            {isAttachment ? (
+              msg.attachmentType?.startsWith('image/') ? (
+                <img 
+                  src={msg.attachmentUrl!} 
+                  alt="Imagem" 
+                  className="max-w-full rounded-md max-h-48 object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                  onClick={() => setPreviewImage(msg.attachmentUrl!)}
+                />
+              ) : msg.attachmentType?.startsWith('audio/') ? (
+                <audio controls className="max-w-full">
+                  <source src={msg.attachmentUrl!} type={msg.attachmentType} />
+                  Seu navegador não suporta áudio.
+                </audio>
+              ) : msg.attachmentType?.startsWith('video/') ? (
+                <video controls className="max-w-full max-h-48 rounded-md">
+                  <source src={msg.attachmentUrl!} type={msg.attachmentType} />
+                  Seu navegador não suporta vídeo.
+                </video>
+              ) : (
+                <a 
+                  href={msg.attachmentUrl!} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="underline"
+                >
+                  Ver anexo
+                </a>
+              )
             ) : (
-              <a 
-                href={msg.attachmentUrl} 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                Ver anexo
-              </a>
-            )
-          ) : (
-            <p className="text-sm break-words whitespace-pre-wrap">{msg.message}</p>
+              <p className="text-sm break-words whitespace-pre-wrap">{msg.message}</p>
+            )}
+            <p className={`text-xs mt-1 ${
+              isAdminMessage 
+                ? 'text-primary-foreground/70' 
+                : 'text-muted-foreground'
+            }`}>
+              {format(msg.createdAt, 'HH:mm', { locale: ptBR })}
+            </p>
+          </div>
+          
+          {/* Delete button for admin messages */}
+          {isAdminMessage && (
+            <button
+              onClick={() => setMessageToDelete({ id: msg.id, chatId: msg.chatId })}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-full bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              title="Excluir mensagem"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
           )}
-          <p className={`text-xs mt-1 ${
-            msg.senderType === 'admin' 
-              ? 'text-primary-foreground/70' 
-              : 'text-muted-foreground'
-          }`}>
-            {format(msg.createdAt, 'HH:mm', { locale: ptBR })}
-          </p>
         </div>
       </div>
     );
@@ -259,6 +341,82 @@ const AdminChatPanel: React.FC = () => {
         accept="image/*,audio/*,video/*"
         onChange={handleFileSelect}
       />
+
+      {/* Image Preview Modal */}
+      <Dialog open={!!previewImage} onOpenChange={() => setPreviewImage(null)}>
+        <DialogContent className="max-w-4xl p-0 overflow-hidden bg-background/95 backdrop-blur-sm">
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-10 bg-black/50 hover:bg-black/70 text-white rounded-full"
+              onClick={() => setPreviewImage(null)}
+            >
+              <X className="h-5 w-5" />
+            </Button>
+            
+            <div className="flex items-center justify-center p-4 max-h-[80vh]">
+              <img
+                src={previewImage || ''}
+                alt="Preview"
+                className="max-w-full max-h-[70vh] object-contain rounded-lg"
+              />
+            </div>
+            
+            <div className="p-4 border-t border-border flex justify-center">
+              <Button onClick={() => previewImage && handleDownloadImage(previewImage)} className="gap-2">
+                <Download className="h-4 w-4" />
+                Baixar Imagem
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Chat Confirmation */}
+      <AlertDialog open={!!chatToDelete} onOpenChange={() => setChatToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este chat com <strong>{chatToDelete?.userName}</strong>? 
+              Todas as mensagens serão perdidas permanentemente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteChat}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteChat.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Message Confirmation */}
+      <AlertDialog open={!!messageToDelete} onOpenChange={() => setMessageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Mensagem</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta mensagem?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteMessage}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMessage.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Card className="h-[600px] flex flex-col">
         <CardHeader className="pb-3">
@@ -299,6 +457,7 @@ const AdminChatPanel: React.FC = () => {
                           chat={chat}
                           isSelected={selectedChat?.id === chat.id}
                           onClick={() => setSelectedChat(chat)}
+                          onDelete={() => setChatToDelete(chat)}
                         />
                       ))}
                     </div>
@@ -312,6 +471,7 @@ const AdminChatPanel: React.FC = () => {
                           chat={chat}
                           isSelected={selectedChat?.id === chat.id}
                           onClick={() => setSelectedChat(chat)}
+                          onDelete={() => setChatToDelete(chat)}
                         />
                       ))}
                     </div>
@@ -481,33 +641,48 @@ const ChatListItem: React.FC<{
   chat: SupportChat;
   isSelected: boolean;
   onClick: () => void;
-}> = ({ chat, isSelected, onClick }) => {
+  onDelete: () => void;
+}> = ({ chat, isSelected, onClick, onDelete }) => {
   return (
-    <button
-      onClick={onClick}
-      className={`w-full text-left p-3 rounded-lg transition-colors ${
-        isSelected
-          ? 'bg-primary/10 border border-primary/30'
-          : chat.status === 'open'
-            ? 'bg-destructive/5 hover:bg-destructive/10 border border-destructive/20'
-            : 'bg-muted/50 hover:bg-muted border border-transparent'
-      }`}
-    >
-      <div className="flex items-center justify-between mb-1">
-        <span className="font-medium text-sm truncate">{chat.userName}</span>
-        <Badge variant={chat.status === 'open' ? 'destructive' : 'secondary'} className="text-xs">
-          {chat.status === 'open' ? 'Novo' : 'Fechado'}
-        </Badge>
-      </div>
-      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-        <Clock className="h-3 w-3" />
-        <span>
-          {chat.lastMessageAt 
-            ? formatDistanceToNow(chat.lastMessageAt, { addSuffix: true, locale: ptBR })
-            : formatDistanceToNow(chat.createdAt, { addSuffix: true, locale: ptBR })}
-        </span>
-      </div>
-    </button>
+    <div className="relative group">
+      <button
+        onClick={onClick}
+        className={`w-full text-left p-3 rounded-lg transition-colors ${
+          isSelected
+            ? 'bg-primary/10 border border-primary/30'
+            : chat.status === 'open'
+              ? 'bg-destructive/5 hover:bg-destructive/10 border border-destructive/20'
+              : 'bg-muted/50 hover:bg-muted border border-transparent'
+        }`}
+      >
+        <div className="flex items-center justify-between mb-1">
+          <span className="font-medium text-sm truncate">{chat.userName}</span>
+          <Badge variant={chat.status === 'open' ? 'destructive' : 'secondary'} className="text-xs">
+            {chat.status === 'open' ? 'Novo' : 'Fechado'}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+          <Clock className="h-3 w-3" />
+          <span>
+            {chat.lastMessageAt 
+              ? formatDistanceToNow(chat.lastMessageAt, { addSuffix: true, locale: ptBR })
+              : formatDistanceToNow(chat.createdAt, { addSuffix: true, locale: ptBR })}
+          </span>
+        </div>
+      </button>
+      
+      {/* Delete button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90"
+        title="Excluir chat"
+      >
+        <Trash2 className="h-3 w-3" />
+      </button>
+    </div>
   );
 };
 

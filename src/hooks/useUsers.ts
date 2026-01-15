@@ -9,6 +9,7 @@ export interface UserProfile {
   createdAt: Date;
   balance: number;
   isBanned: boolean;
+  is_banned: boolean; // Added for compatibility
 }
 
 export const useAllUsers = () => {
@@ -37,12 +38,58 @@ export const useAllUsers = () => {
         createdAt: new Date(p.created_at),
         balance: balanceMap.get(p.id) || 0,
         isBanned: p.is_banned || false,
+        is_banned: p.is_banned || false,
       }));
     },
   });
 };
 
+// Alias for useAllUsers
+export const useUsers = useAllUsers;
+
 export const useBanUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_banned: true })
+        .eq('id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao banir usuário');
+    },
+  });
+};
+
+export const useUnbanUser = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (userId: string) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_banned: false })
+        .eq('id', userId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-users'] });
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Erro ao desbanir usuário');
+    },
+  });
+};
+
+export const useToggleBanUser = () => {
   const queryClient = useQueryClient();
 
   return useMutation({

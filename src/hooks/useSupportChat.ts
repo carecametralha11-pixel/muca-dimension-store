@@ -401,3 +401,53 @@ export const useCloseChat = () => {
     },
   });
 };
+
+// Hook to delete a chat (admin only)
+export const useDeleteChat = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (chatId: string) => {
+      // First delete all messages in the chat
+      const { error: messagesError } = await supabase
+        .from('support_messages')
+        .delete()
+        .eq('chat_id', chatId);
+
+      if (messagesError) throw messagesError;
+
+      // Then delete the chat
+      const { error } = await supabase
+        .from('support_chats')
+        .delete()
+        .eq('id', chatId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['all-chats'] });
+      queryClient.invalidateQueries({ queryKey: ['user-chat'] });
+    },
+  });
+};
+
+// Hook to delete a message (admin only, their own messages)
+export const useDeleteMessage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ messageId, chatId }: { messageId: string; chatId: string }) => {
+      const { error } = await supabase
+        .from('support_messages')
+        .delete()
+        .eq('id', messageId);
+
+      if (error) throw error;
+      return chatId;
+    },
+    onSuccess: (chatId) => {
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', chatId] });
+      queryClient.invalidateQueries({ queryKey: ['all-chats'] });
+    },
+  });
+};
