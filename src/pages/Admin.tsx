@@ -82,6 +82,7 @@ import AccountRequestsManager from '@/components/admin/AccountRequestsManager';
 import { useCreateBackup, useRestoreBackup } from '@/hooks/useBackup';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import KLRemotaManager from '@/components/admin/KLRemotaManager';
+import BanManager from '@/components/admin/BanManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
@@ -122,7 +123,7 @@ const Admin = () => {
   // Enable admin notifications
   useAdminNotifications(isAdmin ?? false);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota' | 'bans'>('dashboard');
   const [manageImagesConsultavel, setManageImagesConsultavel] = useState<Consultavel | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -791,6 +792,7 @@ const Admin = () => {
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'cards', label: 'Cards', icon: CreditCard },
     { id: 'users', label: 'Usuários', icon: Users },
+    { id: 'bans', label: 'Banimentos', icon: Ban },
     { id: 'sales', label: 'Vendas', icon: Package },
     { id: 'account-requests', label: 'Contas 99/Uber', icon: Car },
     { id: 'history', label: 'Histórico', icon: History },
@@ -2161,7 +2163,24 @@ const Admin = () => {
           </motion.div>
         )}
 
-        {/* Support Chat Management */}
+        {/* Bans Management */}
+        {activeTab === 'bans' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <h1 className="font-orbitron text-2xl lg:text-3xl font-bold text-foreground">
+              Gerenciar Banimentos
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              Configure a mensagem de banimento com voz e gerencie usuários banidos.
+            </p>
+            <BanManager />
+          </motion.div>
+        )}
+
+
         {activeTab === 'support' && (
           <motion.div
             initial={{ opacity: 0 }}

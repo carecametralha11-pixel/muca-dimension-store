@@ -24,6 +24,52 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+// Play ban message using Web Speech API (Google TTS)
+const playBanMessageTTS = async (customMessage?: string) => {
+  // First try to get the message from the database
+  let message = customMessage || 'Você foi banido do sistema. Sua conta foi suspensa.';
+  
+  if (!customMessage) {
+    try {
+      const { data } = await (supabase
+        .from('ban_messages' as any)
+        .select('message')
+        .eq('is_active', true)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle() as any);
+      
+      if (data?.message) {
+        message = data.message;
+      }
+    } catch (error) {
+      console.error('Error fetching ban message:', error);
+    }
+  }
+
+  if ('speechSynthesis' in window) {
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(message);
+    utterance.lang = 'pt-BR';
+    utterance.rate = 0.9;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    // Try to use a Portuguese voice
+    const voices = window.speechSynthesis.getVoices();
+    const ptVoice = voices.find(voice => 
+      voice.lang.includes('pt') || voice.lang.includes('BR')
+    );
+    if (ptVoice) {
+      utterance.voice = ptVoice;
+    }
+    
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -31,6 +77,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isAdmin, setIsAdmin] = useState(false);
   const [isBanned, setIsBanned] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Load voices on mount (needed for TTS)
+  useEffect(() => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.getVoices();
+      // Chrome needs this event listener to load voices
+      window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+      };
+    }
+  }, []);
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -49,8 +106,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isBanned: banned,
       });
 
-      // If user is banned, show message and logout
+      // If user is banned, show message, play audio, and logout
       if (banned) {
+        await playBanMessageTTS();
         toast.error('Sua conta foi banida. Entre em contato com o suporte.');
         await supabase.auth.signOut();
         setUser(null);
@@ -125,7 +183,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         async (payload) => {
           const newData = payload.new as { is_banned?: boolean };
           if (newData.is_banned) {
-            toast.error('Você foi banido, comédia');
+            // Play the ban message audio
+            await playBanMessageTTS();
+            toast.error('Você foi banido!');
             await supabase.auth.signOut();
             setUser(null);
             setSession(null);
@@ -161,6 +221,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (profileData?.is_banned) {
+        await playBanMessageTTS();
         await supabase.auth.signOut();
         return { error: 'Sua conta foi banida. Entre em contato com o suporte.' };
       }
