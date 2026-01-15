@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, Send, Loader2, X, User, Clock, CheckCheck, Image, Mic, MicOff, Paperclip, Volume2 } from 'lucide-react';
+import { MessageCircle, Send, Loader2, X, User, Clock, CheckCheck, Mic, MicOff, Paperclip, Volume2, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -31,6 +31,7 @@ const AdminChatPanel: React.FC = () => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const previousChatsCountRef = useRef<number>(0);
 
   const { data: chats, isLoading: loadingChats } = useAllChats();
   const { data: messages, isLoading: loadingMessages } = useChatMessages(selectedChat?.id);
@@ -40,7 +41,7 @@ const AdminChatPanel: React.FC = () => {
   const closeChat = useCloseChat();
 
   // Enable admin notifications with sound
-  useAdminChatNotifications();
+  const { playNotificationSound } = useAdminChatNotifications();
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -55,6 +56,17 @@ const AdminChatPanel: React.FC = () => {
       markAsRead.mutate({ chatId: selectedChat.id, senderType: 'admin' });
     }
   }, [selectedChat?.id]);
+
+  // Notify on new chats
+  useEffect(() => {
+    if (chats) {
+      const openChats = chats.filter(c => c.status === 'open');
+      if (openChats.length > previousChatsCountRef.current && previousChatsCountRef.current > 0) {
+        playNotificationSound();
+      }
+      previousChatsCountRef.current = openChats.length;
+    }
+  }, [chats, playNotificationSound]);
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,12 +93,16 @@ const AdminChatPanel: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !selectedChat || !user) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 10MB.');
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 50MB.');
       return;
     }
 
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'];
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm',
+      'video/mp4', 'video/webm', 'video/quicktime'
+    ];
     if (!allowedTypes.includes(file.type)) {
       toast.error('Tipo de arquivo não suportado.');
       return;
@@ -200,6 +216,11 @@ const AdminChatPanel: React.FC = () => {
                 <source src={msg.attachmentUrl} type={msg.attachmentType} />
                 Seu navegador não suporta áudio.
               </audio>
+            ) : msg.attachmentType?.startsWith('video/') ? (
+              <video controls className="max-w-full max-h-48 rounded-md">
+                <source src={msg.attachmentUrl} type={msg.attachmentType} />
+                Seu navegador não suporta vídeo.
+              </video>
             ) : (
               <a 
                 href={msg.attachmentUrl} 
@@ -235,7 +256,7 @@ const AdminChatPanel: React.FC = () => {
         type="file"
         ref={fileInputRef}
         className="hidden"
-        accept="image/*,audio/*"
+        accept="image/*,audio/*,video/*"
         onChange={handleFileSelect}
       />
 
@@ -243,10 +264,10 @@ const AdminChatPanel: React.FC = () => {
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Central de Suporte
+            Central de Suporte - Chat ao Vivo
             {openChats.length > 0 && (
               <Badge variant="destructive" className="ml-2 animate-pulse">
-                <Volume2 className="h-3 w-3 mr-1" />
+                <Bell className="h-3 w-3 mr-1" />
                 {openChats.length} {openChats.length === 1 ? 'ativo' : 'ativos'}
               </Badge>
             )}
@@ -255,7 +276,10 @@ const AdminChatPanel: React.FC = () => {
         <CardContent className="flex-1 flex gap-4 overflow-hidden p-4 pt-0">
           {/* Chat List */}
           <div className="w-1/3 border-r border-border pr-4 overflow-hidden flex flex-col">
-            <h3 className="text-sm font-semibold mb-2 text-muted-foreground">Conversas</h3>
+            <h3 className="text-sm font-semibold mb-2 text-muted-foreground flex items-center gap-2">
+              <Volume2 className="h-4 w-4" />
+              Conversas (som ativo)
+            </h3>
             <ScrollArea className="flex-1">
               {loadingChats ? (
                 <div className="flex items-center justify-center py-8">
@@ -265,7 +289,10 @@ const AdminChatPanel: React.FC = () => {
                 <div className="space-y-2">
                   {openChats.length > 0 && (
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-muted-foreground uppercase">Abertos</p>
+                      <p className="text-xs font-medium text-destructive uppercase flex items-center gap-1">
+                        <span className="w-2 h-2 bg-destructive rounded-full animate-pulse" />
+                        Abertos ({openChats.length})
+                      </p>
                       {openChats.map((chat) => (
                         <ChatListItem
                           key={chat.id}
@@ -278,8 +305,8 @@ const AdminChatPanel: React.FC = () => {
                   )}
                   {closedChats.length > 0 && (
                     <div className="space-y-2 mt-4">
-                      <p className="text-xs font-medium text-muted-foreground uppercase">Encerrados</p>
-                      {closedChats.map((chat) => (
+                      <p className="text-xs font-medium text-muted-foreground uppercase">Encerrados ({closedChats.length})</p>
+                      {closedChats.slice(0, 10).map((chat) => (
                         <ChatListItem
                           key={chat.id}
                           chat={chat}
@@ -292,6 +319,7 @@ const AdminChatPanel: React.FC = () => {
                 </div>
               ) : (
                 <div className="text-center py-8 text-muted-foreground text-sm">
+                  <MessageCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
                   Nenhuma conversa ainda
                 </div>
               )}
@@ -391,6 +419,7 @@ const AdminChatPanel: React.FC = () => {
                             className="h-10 w-10 shrink-0"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={sendMessageWithAttachment.isPending}
+                            title="Enviar imagem, áudio ou vídeo"
                           >
                             <Paperclip className="h-4 w-4" />
                           </Button>
@@ -401,6 +430,7 @@ const AdminChatPanel: React.FC = () => {
                             className="h-10 w-10 shrink-0"
                             onClick={startRecording}
                             disabled={sendMessageWithAttachment.isPending}
+                            title="Gravar áudio"
                           >
                             <Mic className="h-4 w-4" />
                           </Button>
@@ -434,6 +464,9 @@ const AdminChatPanel: React.FC = () => {
                 <p className="text-muted-foreground">
                   Selecione uma conversa para visualizar
                 </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  Você receberá notificações sonoras quando novos chats chegarem
+                </p>
               </div>
             )}
           </div>
@@ -455,13 +488,15 @@ const ChatListItem: React.FC<{
       className={`w-full text-left p-3 rounded-lg transition-colors ${
         isSelected
           ? 'bg-primary/10 border border-primary/30'
-          : 'bg-muted/50 hover:bg-muted border border-transparent'
+          : chat.status === 'open'
+            ? 'bg-destructive/5 hover:bg-destructive/10 border border-destructive/20'
+            : 'bg-muted/50 hover:bg-muted border border-transparent'
       }`}
     >
       <div className="flex items-center justify-between mb-1">
         <span className="font-medium text-sm truncate">{chat.userName}</span>
-        <Badge variant={chat.status === 'open' ? 'default' : 'secondary'} className="text-xs">
-          {chat.status === 'open' ? 'Aberto' : 'Fechado'}
+        <Badge variant={chat.status === 'open' ? 'destructive' : 'secondary'} className="text-xs">
+          {chat.status === 'open' ? 'Novo' : 'Fechado'}
         </Badge>
       </div>
       <div className="flex items-center gap-1 text-xs text-muted-foreground">

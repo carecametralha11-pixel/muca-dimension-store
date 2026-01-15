@@ -1,11 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Image, Mic, MicOff, Paperclip } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Mic, MicOff, Paperclip, Video } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
-  useIsEligibleForChat, 
   useUserChat, 
   useCreateChat, 
   useChatMessages, 
@@ -18,8 +17,13 @@ import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
+// Global event emitter for opening chat
+export const openSupportChat = () => {
+  window.dispatchEvent(new CustomEvent('openSupportChat'));
+};
+
 const SupportChatWidget: React.FC = () => {
-  const { user, profile } = useAuth();
+  const { user, profile, isAdmin } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -30,13 +34,23 @@ const SupportChatWidget: React.FC = () => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { data: isEligible, isLoading: checkingEligibility } = useIsEligibleForChat(user?.id);
-  const { data: existingChat, isLoading: loadingChat } = useUserChat(user?.id);
+  const { data: existingChat, isLoading: loadingChat, refetch: refetchChat } = useUserChat(user?.id);
   const { data: messages, isLoading: loadingMessages } = useChatMessages(existingChat?.id);
   const createChat = useCreateChat();
   const sendMessage = useSendMessage();
   const sendMessageWithAttachment = useSendMessageWithAttachment();
   const markAsRead = useMarkAsRead();
+
+  // Listen for global open events
+  useEffect(() => {
+    const handleOpenChat = () => {
+      setIsOpen(true);
+      refetchChat();
+    };
+    
+    window.addEventListener('openSupportChat', handleOpenChat);
+    return () => window.removeEventListener('openSupportChat', handleOpenChat);
+  }, [refetchChat]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
@@ -79,16 +93,20 @@ const SupportChatWidget: React.FC = () => {
     const file = e.target.files?.[0];
     if (!file || !existingChat || !user) return;
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 10MB.');
+    // Validate file size (max 50MB for videos)
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('Arquivo muito grande. Máximo 50MB.');
       return;
     }
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm'];
+    const allowedTypes = [
+      'image/jpeg', 'image/png', 'image/gif', 'image/webp',
+      'audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/webm',
+      'video/mp4', 'video/webm', 'video/quicktime'
+    ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Tipo de arquivo não suportado. Use imagens ou áudio.');
+      toast.error('Tipo de arquivo não suportado. Use imagens, áudio ou vídeo.');
       return;
     }
 
@@ -203,6 +221,11 @@ const SupportChatWidget: React.FC = () => {
                 <source src={msg.attachmentUrl} type={msg.attachmentType} />
                 Seu navegador não suporta áudio.
               </audio>
+            ) : msg.attachmentType?.startsWith('video/') ? (
+              <video controls className="max-w-full max-h-48 rounded-md">
+                <source src={msg.attachmentUrl} type={msg.attachmentType} />
+                Seu navegador não suporta vídeo.
+              </video>
             ) : (
               <a 
                 href={msg.attachmentUrl} 
@@ -228,9 +251,8 @@ const SupportChatWidget: React.FC = () => {
     );
   };
 
-  // Don't show widget if user is not logged in or not eligible
-  if (!user || checkingEligibility) return null;
-  if (!isEligible) return null;
+  // Don't show widget if user is not logged in OR if user is admin (they use the panel)
+  if (!user || isAdmin) return null;
 
   return (
     <>
@@ -239,7 +261,7 @@ const SupportChatWidget: React.FC = () => {
         type="file"
         ref={fileInputRef}
         className="hidden"
-        accept="image/*,audio/*"
+        accept="image/*,audio/*,video/*"
         onChange={handleFileSelect}
       />
 
@@ -275,7 +297,7 @@ const SupportChatWidget: React.FC = () => {
             <div className="flex items-center justify-between p-4 bg-primary text-primary-foreground">
               <div className="flex items-center gap-2">
                 <MessageCircle className="h-5 w-5" />
-                <span className="font-semibold">Suporte</span>
+                <span className="font-semibold">Suporte ao Vivo</span>
               </div>
               <Button
                 variant="ghost"
@@ -360,6 +382,7 @@ const SupportChatWidget: React.FC = () => {
                             className="h-10 w-10 shrink-0"
                             onClick={() => fileInputRef.current?.click()}
                             disabled={sendMessageWithAttachment.isPending}
+                            title="Enviar imagem, áudio ou vídeo"
                           >
                             <Paperclip className="h-4 w-4" />
                           </Button>
@@ -370,6 +393,7 @@ const SupportChatWidget: React.FC = () => {
                             className="h-10 w-10 shrink-0"
                             onClick={startRecording}
                             disabled={sendMessageWithAttachment.isPending}
+                            title="Gravar áudio"
                           >
                             <Mic className="h-4 w-4" />
                           </Button>

@@ -219,7 +219,7 @@ export const useSendMessage = () => {
   });
 };
 
-// Hook to send a message with attachment
+// Hook to send a message with attachment (images, audio, video)
 export const useSendMessageWithAttachment = () => {
   const queryClient = useQueryClient();
 
@@ -245,6 +245,16 @@ export const useSendMessageWithAttachment = () => {
         .from('chat-attachments')
         .getPublicUrl(fileName);
 
+      // Determine message based on file type
+      let messageLabel = '📎 Anexo';
+      if (file.type.startsWith('image/')) {
+        messageLabel = '📷 Imagem';
+      } else if (file.type.startsWith('audio/')) {
+        messageLabel = '🎵 Áudio';
+      } else if (file.type.startsWith('video/')) {
+        messageLabel = '🎬 Vídeo';
+      }
+
       // Insert message with attachment
       const { data, error } = await supabase
         .from('support_messages')
@@ -252,7 +262,7 @@ export const useSendMessageWithAttachment = () => {
           chat_id: chatId,
           sender_id: senderId,
           sender_type: senderType,
-          message: file.type.startsWith('image/') ? '📷 Imagem' : file.type.startsWith('audio/') ? '🎵 Áudio' : '📎 Anexo',
+          message: messageLabel,
           attachment_url: urlData.publicUrl,
           attachment_type: file.type,
         })
