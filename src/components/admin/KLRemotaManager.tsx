@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   GraduationCap, 
   Plus, 
@@ -72,12 +72,12 @@ const KLRemotaManager = () => {
   });
 
   // Initialize price input when config loads
-  useState(() => {
+  useEffect(() => {
     if (config) {
       setPriceInput(config.price.toString());
       setIsActive(config.is_active);
     }
-  });
+  }, [config]);
 
   const handleSaveConfig = async () => {
     if (!config) return;
