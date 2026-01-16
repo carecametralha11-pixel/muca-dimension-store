@@ -40,9 +40,22 @@ export const useKLRemotaConfig = () => {
         .from('kl_remota_config')
         .select('*')
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      
+      // If no config exists, create a default one
+      if (!data) {
+        const { data: newConfig, error: insertError } = await supabase
+          .from('kl_remota_config')
+          .insert({ price: 0, is_active: true })
+          .select()
+          .single();
+        
+        if (insertError) throw insertError;
+        return newConfig as KLRemotaConfig;
+      }
+      
       return data as KLRemotaConfig;
     },
   });
