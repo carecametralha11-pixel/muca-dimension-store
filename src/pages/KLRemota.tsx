@@ -11,6 +11,7 @@ import { useModuleMedia, ModuleMedia } from '@/hooks/useModuleMedia';
 import { useModuleDescription } from '@/hooks/useModuleDescriptions';
 import { useKLRemotaConfig, useKLRemotaFiles, useHasKLRemotaPurchase, usePurchaseKLRemota } from '@/hooks/useKLRemota';
 import { useBalance } from '@/hooks/useBalance';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
@@ -59,12 +60,13 @@ const MediaSkeleton = () => (
 );
 
 const KLRemota = () => {
+  const { user } = useAuth();
   const { data: media = [], isLoading: mediaLoading } = useModuleMedia('kl-remota');
   const { data: moduleDesc, isLoading: descLoading } = useModuleDescription('kl-remota');
   const { data: config, isLoading: configLoading } = useKLRemotaConfig();
   const { data: klFiles = [], isLoading: filesLoading } = useKLRemotaFiles();
   const { data: hasPurchased, isLoading: purchaseLoading } = useHasKLRemotaPurchase();
-  const { data: userBalance = 0 } = useBalance();
+  const { data: userBalance = 0 } = useBalance(user?.id);
   const purchaseKL = usePurchaseKLRemota();
   const queryClient = useQueryClient();
   const [selectedMedia, setSelectedMedia] = useState<ModuleMedia | null>(null);
