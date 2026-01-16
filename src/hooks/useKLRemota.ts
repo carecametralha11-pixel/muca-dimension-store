@@ -248,11 +248,12 @@ export const usePurchaseKLRemota = () => {
         throw new Error('Saldo insuficiente');
       }
 
-      // Deduct balance
-      const newBalance = currentBalance - price;
+      // Deduct balance - use update instead of upsert since we know the record exists
+      const newBalance = Number(currentBalance) - price;
       const { error: updateError } = await supabase
         .from('user_balances')
-        .upsert({ user_id: user.id, balance: newBalance });
+        .update({ balance: newBalance, updated_at: new Date().toISOString() })
+        .eq('user_id', user.id);
 
       if (updateError) throw updateError;
 
