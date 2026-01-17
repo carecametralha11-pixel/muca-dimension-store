@@ -4,14 +4,21 @@ const config: CapacitorConfig = {
   appId: 'com.muca.store',
   appName: 'MUCA Store',
   webDir: 'dist',
-  server: {
-    url: 'https://3b12f888-a07e-48ac-b180-e99221df375d.lovableproject.com?forceHideBadge=true',
-    cleartext: true
-  },
   plugins: {
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']
+    },
+    StatusBar: {
+      style: 'DARK',
+      backgroundColor: '#000000',
+      overlaysWebView: false
     }
+  },
+  android: {
+    backgroundColor: '#000000'
+  },
+  ios: {
+    backgroundColor: '#000000'
   }
 };
 
