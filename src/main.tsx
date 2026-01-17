@@ -1,9 +1,11 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
-import { configureStatusBar } from "./services/statusBarService";
 
-// Configure status bar for native apps
-configureStatusBar();
+const root = createRoot(document.getElementById("root")!);
+root.render(<App />);
 
-createRoot(document.getElementById("root")!).render(<App />);
+// Configure status bar after app mounts (for native platforms)
+import("./services/statusBarService").then(({ configureStatusBar }) => {
+  configureStatusBar();
+});
