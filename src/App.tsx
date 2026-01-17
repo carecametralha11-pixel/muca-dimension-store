@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -47,8 +47,29 @@ const PageLoader = () => (
   </div>
 );
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
+// Initialize push notifications for native platforms
+const usePushNotificationsInit = () => {
+  useEffect(() => {
+    const initPushNotifications = async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (Capacitor.isNativePlatform()) {
+          const { initializePushNotifications } = await import('./services/pushNotifications');
+          await initializePushNotifications();
+        }
+      } catch (error) {
+        console.log('Push notifications not available:', error);
+      }
+    };
+    
+    initPushNotifications();
+  }, []);
+};
+
+const AppContent = () => {
+  usePushNotificationsInit();
+  
+  return (
     <AuthProvider>
       <TooltipProvider>
         <SecurityProtection />
@@ -80,6 +101,12 @@ const App = () => (
         </BrowserRouter>
       </TooltipProvider>
     </AuthProvider>
+  );
+};
+
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <AppContent />
   </QueryClientProvider>
 );
 
