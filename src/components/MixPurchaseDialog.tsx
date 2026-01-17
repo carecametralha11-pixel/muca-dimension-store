@@ -60,19 +60,24 @@ const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => 
       return;
     }
 
+    // Prevent double-click
+    if (isProcessing) {
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      // Update balance and reduce mix stock
-      await Promise.all([
-        updateBalance.mutateAsync({
-          userId: user.id,
-          newBalance: balance - mix.price,
-        }),
-        updateMix.mutateAsync({
-          id: mix.id,
-          stock: mix.stock - 1,
-        }),
-      ]);
+      // First, update mix stock to prevent duplicate purchases
+      await updateMix.mutateAsync({
+        id: mix.id,
+        stock: mix.stock - 1,
+      });
+
+      // Then update balance
+      await updateBalance.mutateAsync({
+        userId: user.id,
+        newBalance: balance - mix.price,
+      });
 
       setPurchasedMix({
         mixId: mix.id,
@@ -82,13 +87,22 @@ const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => 
         quantity: mix.quantity,
       });
       
-      // Invalidate mixes query to remove from available list
-      queryClient.invalidateQueries({ queryKey: ['card-mixes'] });
+      // Force refetch to update UI immediately
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['card-mixes'] }),
+        queryClient.invalidateQueries({ queryKey: ['balance', user.id] }),
+      ]);
       
       setStep('success');
       toast.success('Compra realizada com sucesso!');
     } catch (error: any) {
       console.error('Erro na compra:', error);
+      // Rollback stock if purchase failed
+      try {
+        await updateMix.mutateAsync({ id: mix.id, stock: mix.stock });
+      } catch (rollbackError) {
+        console.error('Erro ao restaurar stock:', rollbackError);
+      }
       toast.error(error.message || 'Erro ao processar compra');
     } finally {
       setIsProcessing(false);

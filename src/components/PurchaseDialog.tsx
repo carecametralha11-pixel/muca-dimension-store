@@ -55,13 +55,24 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
       return;
     }
 
+    // Prevent double-click
+    if (isProcessing) {
+      return;
+    }
+
     console.log('=== INICIANDO COMPRA ===');
     console.log('User ID:', user.id);
     console.log('Card:', card);
 
     setIsProcessing(true);
     try {
-      // Executar todas as operações em paralelo para maior velocidade
+      // First, update card stock to 0 to prevent duplicate purchases
+      await updateCard.mutateAsync({
+        id: card.id,
+        stock: 0,
+      });
+
+      // Then create purchase and update balance
       const [purchase] = await Promise.all([
         createPurchase.mutateAsync({
           userId: user.id,
@@ -77,20 +88,27 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
           userId: user.id,
           newBalance: balance - card.price,
         }),
-        updateCard.mutateAsync({
-          id: card.id,
-          stock: 0,
-        }),
       ]);
 
-      // Invalidate cards query to remove from available list
-      queryClient.invalidateQueries({ queryKey: ['cards'] });
+      // Force refetch to update UI immediately
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['cards'] }),
+        queryClient.invalidateQueries({ queryKey: ['all-cards'] }),
+        queryClient.invalidateQueries({ queryKey: ['purchases', user.id] }),
+        queryClient.invalidateQueries({ queryKey: ['balance', user.id] }),
+      ]);
 
       setPurchasedCard(purchase);
       setStep('success');
       toast.success('Compra realizada com sucesso!');
     } catch (error: any) {
       console.error('Erro na compra:', error);
+      // Rollback stock if purchase failed
+      try {
+        await updateCard.mutateAsync({ id: card.id, stock: 1 });
+      } catch (rollbackError) {
+        console.error('Erro ao restaurar stock:', rollbackError);
+      }
       toast.error(error.message || 'Erro ao processar compra');
     } finally {
       setIsProcessing(false);
