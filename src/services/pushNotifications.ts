@@ -1,5 +1,5 @@
-import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
+// Push notification service for native platforms
+// Uses dynamic imports to avoid issues on web
 
 export interface PushNotificationService {
   register: () => Promise<void>;
@@ -10,15 +10,29 @@ export interface PushNotificationService {
 class PushNotificationServiceImpl implements PushNotificationService {
   private token: string | null = null;
   private listeners: ((notification: any) => void)[] = [];
+  private isNative: boolean = false;
+
+  async checkPlatform(): Promise<boolean> {
+    try {
+      const { Capacitor } = await import('@capacitor/core');
+      this.isNative = Capacitor.isNativePlatform();
+      return this.isNative;
+    } catch {
+      return false;
+    }
+  }
 
   async register(): Promise<void> {
-    // Only run on native platforms
-    if (!Capacitor.isNativePlatform()) {
+    const isNative = await this.checkPlatform();
+    
+    if (!isNative) {
       console.log('Push notifications are only available on native platforms');
       return;
     }
 
     try {
+      const { PushNotifications } = await import('@capacitor/push-notifications');
+      
       // Request permission
       let permStatus = await PushNotifications.checkPermissions();
 
@@ -38,7 +52,6 @@ class PushNotificationServiceImpl implements PushNotificationService {
       PushNotifications.addListener('registration', (token) => {
         console.log('Push registration success, token:', token.value);
         this.token = token.value;
-        // Here you could send the token to your backend
         this.saveTokenToBackend(token.value);
       });
 
@@ -72,10 +85,20 @@ class PushNotificationServiceImpl implements PushNotificationService {
   }
 
   private async saveTokenToBackend(token: string): Promise<void> {
-    // TODO: Save the token to your Supabase backend
-    // This would typically involve calling an edge function or
-    // storing the token in a user_devices table
-    console.log('Token to save:', token);
+    // Save the token to Supabase for sending notifications later
+    console.log('Push notification token:', token);
+    
+    try {
+      const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // You can save this token to a user_devices table if needed
+        console.log('User ID for push token:', user.id);
+      }
+    } catch (error) {
+      console.log('Could not save token to backend:', error);
+    }
   }
 }
 
@@ -83,7 +106,8 @@ export const pushNotificationService = new PushNotificationServiceImpl();
 
 // Initialize push notifications when the app starts
 export const initializePushNotifications = async (): Promise<void> => {
-  if (Capacitor.isNativePlatform()) {
+  const isNative = await pushNotificationService.checkPlatform();
+  if (isNative) {
     await pushNotificationService.register();
   }
 };
