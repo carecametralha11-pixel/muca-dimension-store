@@ -122,20 +122,23 @@ export const useCreatePurchase = () => {
 
       console.log('useCreatePurchase: Data to insert:', insertData);
 
+      // Use select() without single() to avoid "Cannot coerce" error
       const { data, error } = await supabase
         .from('purchases')
         .insert(insertData)
-        .select()
-        .single();
+        .select();
 
       if (error) {
         console.error('useCreatePurchase: ERROR creating purchase:', error);
-        console.error('useCreatePurchase: Error details:', JSON.stringify(error, null, 2));
         throw error;
       }
+
+      if (!data || data.length === 0) {
+        throw new Error('Falha ao criar registro de compra');
+      }
       
-      console.log('useCreatePurchase: Purchase saved successfully!', data);
-      return mapDbToPurchase(data);
+      console.log('useCreatePurchase: Purchase saved successfully!', data[0]);
+      return mapDbToPurchase(data[0]);
     },
     onSuccess: (data, variables) => {
       console.log('useCreatePurchase: onSuccess callback', data);
