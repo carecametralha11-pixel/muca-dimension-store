@@ -87,11 +87,11 @@ export const useCreateCard = () => {
           card_level: card.cardLevel,
           bank_name: card.bankName,
         })
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
-      return mapDbToCard(data);
+      if (!data || data.length === 0) throw new Error('Falha ao criar card');
+      return mapDbToCard(data[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards'] });
@@ -172,11 +172,11 @@ export const useUpdateCard = () => {
           bank_name: card.bankName,
         })
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
-      return mapDbToCard(data);
+      if (!data || data.length === 0) throw new Error('Card não encontrado');
+      return mapDbToCard(data[0]);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards'] });
@@ -205,11 +205,11 @@ export const useDeleteCard = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards'] });
       queryClient.invalidateQueries({ queryKey: ['all-cards'] });
-      toast.success('Card removido!');
+      // Note: Don't show toast here as it may be called from purchase flow
     },
     onError: (error: any) => {
       console.error('Error deleting card:', error);
-      toast.error('Erro ao remover card.');
+      // Note: Don't show toast here as error handling is done in calling code
     },
   });
 };

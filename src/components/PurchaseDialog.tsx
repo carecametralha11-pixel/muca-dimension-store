@@ -8,7 +8,7 @@ import { Card as CardType } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBalance, useUpdateBalance } from '@/hooks/useBalance';
 import { useCreatePurchase, Purchase } from '@/hooks/usePurchases';
-import { useUpdateCard } from '@/hooks/useCards';
+import { useDeleteCard } from '@/hooks/useCards';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -25,7 +25,7 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
   const { data: balance = 0, refetch: refetchBalance } = useBalance(user?.id);
   const updateBalance = useUpdateBalance();
   const createPurchase = useCreatePurchase();
-  const updateCard = useUpdateCard();
+  const deleteCard = useDeleteCard();
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'terms' | 'select' | 'confirm' | 'success'>('terms');
   const [purchasedCard, setPurchasedCard] = useState<Purchase | null>(null);
@@ -65,30 +65,34 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
     console.log('Card:', card);
 
     setIsProcessing(true);
+    
     try {
-      // First, update card stock to 0 to prevent duplicate purchases
-      await updateCard.mutateAsync({
-        id: card.id,
-        stock: 0,
+      // Step 1: Create purchase record FIRST with all card data
+      const purchase = await createPurchase.mutateAsync({
+        userId: user.id,
+        cardId: card.id,
+        cardName: card.name,
+        cardCategory: card.category,
+        price: card.price,
+        paymentMethod: 'balance',
+        status: 'completed',
+        card: card,
       });
 
-      // Then create purchase and update balance
-      const [purchase] = await Promise.all([
-        createPurchase.mutateAsync({
-          userId: user.id,
-          cardId: card.id,
-          cardName: card.name,
-          cardCategory: card.category,
-          price: card.price,
-          paymentMethod: 'balance',
-          status: 'completed',
-          card: card,
-        }),
-        updateBalance.mutateAsync({
-          userId: user.id,
-          newBalance: balance - card.price,
-        }),
-      ]);
+      console.log('Purchase created:', purchase);
+
+      // Step 2: Deduct balance
+      await updateBalance.mutateAsync({
+        userId: user.id,
+        newBalance: balance - card.price,
+      });
+
+      console.log('Balance updated');
+
+      // Step 3: DELETE the card from available cards (not just update stock)
+      await deleteCard.mutateAsync(card.id);
+
+      console.log('Card deleted from available');
 
       // Force refetch to update UI immediately
       await Promise.all([
@@ -103,13 +107,7 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
       toast.success('Compra realizada com sucesso!');
     } catch (error: any) {
       console.error('Erro na compra:', error);
-      // Rollback stock if purchase failed
-      try {
-        await updateCard.mutateAsync({ id: card.id, stock: 1 });
-      } catch (rollbackError) {
-        console.error('Erro ao restaurar stock:', rollbackError);
-      }
-      toast.error(error.message || 'Erro ao processar compra');
+      toast.error(error.message || 'Erro ao processar compra. Tente novamente.');
     } finally {
       setIsProcessing(false);
     }

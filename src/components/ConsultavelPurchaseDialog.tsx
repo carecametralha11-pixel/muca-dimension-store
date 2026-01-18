@@ -52,35 +52,46 @@ const ConsultavelPurchaseDialog = ({ consultavel, isOpen, onClose }: Consultavel
   };
 
   const handlePurchase = async () => {
-    if (!user || !canAfford) return;
+    if (!user || !canAfford || isPurchasing) return;
 
     setIsPurchasing(true);
     try {
-      // Deduct balance
+      // Step 1: Create purchase record FIRST with all data
+      const { data: purchaseData, error: purchaseError } = await supabase
+        .from('purchases')
+        .insert({
+          user_id: user.id,
+          card_id: consultavel.id,
+          card_name: consultavel.name,
+          card_category: 'CONSULTÁVEL',
+          card_level: consultavel.card_level,
+          bank_name: consultavel.bank_name,
+          card_number: consultavel.card_number,
+          card_expiry: consultavel.card_expiry,
+          card_cvv: consultavel.card_cvv,
+          description: consultavel.description,
+          price: consultavel.price,
+          payment_method: 'balance',
+          status: 'completed'
+        })
+        .select();
+
+      if (purchaseError) throw purchaseError;
+      if (!purchaseData || purchaseData.length === 0) throw new Error('Falha ao criar registro');
+
+      // Step 2: Deduct balance
       const newBalance = balance - consultavel.price;
       await updateBalance.mutateAsync({ userId: user.id, newBalance });
 
-      // Create purchase record
-      const { error: purchaseError } = await supabase.from('purchases').insert({
-        user_id: user.id,
-        card_id: consultavel.id,
-        card_name: consultavel.name,
-        card_category: 'CONSULTÁVEL',
-        card_level: consultavel.card_level,
-        bank_name: consultavel.bank_name,
-        card_number: consultavel.card_number,
-        card_expiry: consultavel.card_expiry,
-        card_cvv: consultavel.card_cvv,
-        description: consultavel.description,
-        price: consultavel.price,
-        payment_method: 'balance',
-        status: 'completed'
-      });
+      // Step 3: DELETE the consultavel (remove from available)
+      const { error: deleteError } = await supabase
+        .from('consultaveis')
+        .delete()
+        .eq('id', consultavel.id);
 
-      if (purchaseError) throw purchaseError;
-
-      // Update consultavel stock to 0 (mark as sold)
-      await supabase.from('consultaveis').update({ is_active: false }).eq('id', consultavel.id);
+      if (deleteError) {
+        console.error('Error deleting consultavel:', deleteError);
+      }
 
       setPurchaseData({
         cardNumber: consultavel.card_number,
@@ -92,15 +103,19 @@ const ConsultavelPurchaseDialog = ({ consultavel, isOpen, onClose }: Consultavel
       });
       
       // Invalidate queries to update lists
-      queryClient.invalidateQueries({ queryKey: ['consultaveis'] });
-      queryClient.invalidateQueries({ queryKey: ['purchases'] });
-      queryClient.invalidateQueries({ queryKey: ['all-purchases'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['consultaveis'] }),
+        queryClient.invalidateQueries({ queryKey: ['purchases'] }),
+        queryClient.invalidateQueries({ queryKey: ['purchases', user.id] }),
+        queryClient.invalidateQueries({ queryKey: ['all-purchases'] }),
+        queryClient.invalidateQueries({ queryKey: ['balance', user.id] }),
+      ]);
       
       setPurchased(true);
       toast.success('Compra realizada com sucesso!');
     } catch (error) {
       console.error('Purchase error:', error);
-      toast.error('Erro ao realizar compra');
+      toast.error('Erro ao realizar compra. Tente novamente.');
     } finally {
       setIsPurchasing(false);
     }
