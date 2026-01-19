@@ -9,10 +9,16 @@ import { useCreateChat, useSendMessage, useUserChat } from '@/hooks/useSupportCh
 import ConsultavelWaitingPopup from '@/components/ConsultavelWaitingPopup';
 import { toast } from 'sonner';
 
+interface SelectedTierData {
+  limit: number;
+  price: number;
+  chatId: string;
+}
+
 const ConsultavelTierSelector: React.FC = () => {
   const { user, profile } = useAuth();
   const { data: tiers = [], isLoading } = usePricingTiers();
-  const [selectedTier, setSelectedTier] = useState<{ limit: number; price: number } | null>(null);
+  const [selectedTier, setSelectedTier] = useState<SelectedTierData | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showWaitingPopup, setShowWaitingPopup] = useState(false);
   
@@ -34,7 +40,6 @@ const ConsultavelTierSelector: React.FC = () => {
       return;
     }
 
-    setSelectedTier({ limit: limitAmount, price });
     setIsSubmitting(true);
 
     try {
@@ -73,6 +78,9 @@ const ConsultavelTierSelector: React.FC = () => {
         chat_id: chatId,
       });
 
+      // Set selected tier with chat ID
+      setSelectedTier({ limit: limitAmount, price, chatId });
+      
       // Show waiting popup
       setShowWaitingPopup(true);
 
@@ -242,6 +250,7 @@ const ConsultavelTierSelector: React.FC = () => {
           limitAmount={selectedTier.limit}
           price={selectedTier.price}
           userName={profile?.name || 'Cliente'}
+          chatId={selectedTier.chatId}
         />
       )}
     </>

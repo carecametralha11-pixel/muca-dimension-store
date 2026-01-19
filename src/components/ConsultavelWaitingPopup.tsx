@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MessageCircle, Loader2, Bell, Sparkles, Clock, CheckCircle2 } from 'lucide-react';
+import { MessageCircle, Loader2, Bell, Sparkles, Clock, CheckCircle2, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useChatMessages, useUserChat } from '@/hooks/useSupportChat';
 import { openSupportChat } from '@/components/chat/SupportChatWidget';
+import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 interface ConsultavelWaitingPopupProps {
@@ -13,6 +14,7 @@ interface ConsultavelWaitingPopupProps {
   limitAmount: number;
   price: number;
   userName: string;
+  chatId?: string;
 }
 
 const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
@@ -21,11 +23,12 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
   limitAmount,
   price,
   userName,
+  chatId,
 }) => {
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [hasAdminResponse, setHasAdminResponse] = useState(false);
   const { data: userChat } = useUserChat();
-  const { data: messages } = useChatMessages(userChat?.id);
+  const { data: messages } = useChatMessages(chatId || userChat?.id);
 
   // Request notification permission
   const requestNotificationPermission = async () => {
@@ -40,31 +43,66 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
     }
   };
 
-  // Check for admin messages
+  // Play notification sound
+  const playSound = useCallback(() => {
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.volume = 0.8;
+      audio.play().catch(() => {});
+    } catch (e) {}
+  }, []);
+
+  // Subscribe to realtime messages
+  useEffect(() => {
+    if (!isOpen || !chatId) return;
+
+    const channel = supabase
+      .channel(`waiting-popup-${chatId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'support_messages',
+          filter: `chat_id=eq.${chatId}`,
+        },
+        (payload) => {
+          const newMessage = payload.new as any;
+          
+          if (newMessage.sender_type === 'admin') {
+            setHasAdminResponse(true);
+            playSound();
+            
+            // Browser notification
+            if ('Notification' in window && Notification.permission === 'granted') {
+              new Notification('MUCA respondeu!', {
+                body: 'O MUCA está pronto para te atender.',
+                icon: '/favicon.ico',
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isOpen, chatId, playSound]);
+
+  // Check for admin messages on mount
   useEffect(() => {
     if (messages && messages.length > 0) {
       const adminMessages = messages.filter(m => m.senderType === 'admin');
       if (adminMessages.length > 0) {
         setHasAdminResponse(true);
-        // Play sound if notifications enabled
-        if (notificationsEnabled && 'Notification' in window && Notification.permission === 'granted') {
-          new Notification('MUCA respondeu!', {
-            body: 'O MUCA está pronto para te atender.',
-            icon: '/favicon.ico',
-          });
-        }
-        // Play audio notification
-        const audio = new Audio('/notification.mp3');
-        audio.volume = 0.5;
-        audio.play().catch(() => {});
       }
     }
-  }, [messages, notificationsEnabled]);
+  }, [messages]);
 
   // Auto-request notification permission on open
   useEffect(() => {
     if (isOpen && 'Notification' in window && Notification.permission === 'default') {
-      // Small delay for better UX
       const timer = setTimeout(() => {
         requestNotificationPermission();
       }, 1500);
@@ -84,6 +122,16 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
     }).format(value);
   };
 
+  // Auto close and open chat when admin responds
+  useEffect(() => {
+    if (hasAdminResponse && isOpen) {
+      const timer = setTimeout(() => {
+        handleOpenChat();
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [hasAdminResponse, isOpen]);
+
   return (
     <Dialog open={isOpen} onOpenChange={() => {}}>
       <DialogContent 
@@ -92,6 +140,18 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="relative">
+          {/* Close button - only show when admin responded */}
+          {hasAdminResponse && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-2 right-2 z-20"
+              onClick={handleOpenChat}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+
           {/* Animated Background Effects */}
           <div className="absolute inset-0 overflow-hidden pointer-events-none">
             <motion.div
@@ -116,7 +176,7 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
                 repeat: Infinity,
                 ease: 'easeInOut',
               }}
-              className="absolute -bottom-20 -left-20 w-60 h-60 bg-green-500 rounded-full blur-3xl"
+              className="absolute -bottom-20 -left-20 w-60 h-60 bg-emerald-500 rounded-full blur-3xl"
             />
           </div>
 
@@ -134,7 +194,7 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
                   <motion.div
                     animate={{ scale: [1, 1.1, 1] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="w-24 h-24 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center"
+                    className="w-24 h-24 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center"
                   >
                     <CheckCircle2 className="h-12 w-12 text-white" />
                   </motion.div>
@@ -152,7 +212,7 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
                   <motion.div
                     animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
                     transition={{ duration: 2, repeat: Infinity }}
-                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-green-500 flex items-center justify-center"
+                    className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center"
                   >
                     <Sparkles className="h-3 w-3 text-white" />
                   </motion.div>
@@ -169,11 +229,11 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
             >
               {hasAdminResponse ? (
                 <>
-                  <h2 className="text-2xl font-bold text-green-500 mb-2">
+                  <h2 className="text-2xl font-bold text-emerald-500 mb-2">
                     MUCA Respondeu!
                   </h2>
                   <p className="text-muted-foreground">
-                    Clique abaixo para abrir o chat e continuar o atendimento.
+                    Abrindo chat automaticamente...
                   </p>
                 </>
               ) : (
@@ -214,7 +274,7 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
               >
                 <Button
                   onClick={handleOpenChat}
-                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                  className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700"
                 >
                   <MessageCircle className="h-5 w-5 mr-2" />
                   Abrir Chat com MUCA
@@ -277,7 +337,7 @@ const ConsultavelWaitingPopup: React.FC<ConsultavelWaitingPopupProps> = ({
                   <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    className="flex items-center justify-center gap-2 text-green-500 text-sm"
+                    className="flex items-center justify-center gap-2 text-emerald-500 text-sm"
                   >
                     <CheckCircle2 className="h-4 w-4" />
                     <span>Notificações ativadas</span>
