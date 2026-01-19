@@ -83,6 +83,7 @@ import { useCreateBackup, useRestoreBackup } from '@/hooks/useBackup';
 import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import KLRemotaManager from '@/components/admin/KLRemotaManager';
 import BanManager from '@/components/admin/BanManager';
+import ConsultavelPricingManager from '@/components/admin/ConsultavelPricingManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
@@ -1976,9 +1977,14 @@ const Admin = () => {
               </Button>
             </div>
 
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-sm mb-6">
               Adicione consultáveis CT ou ST que ficarão disponíveis para os clientes solicitarem.
             </p>
+
+            {/* Pricing Tiers Manager */}
+            <div className="mb-8">
+              <ConsultavelPricingManager />
+            </div>
 
             {consultaveisLoading ? (
               <div className="flex justify-center py-16">
