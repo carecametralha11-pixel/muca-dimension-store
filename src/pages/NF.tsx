@@ -10,6 +10,7 @@ import { useModuleMedia, ModuleMedia } from '@/hooks/useModuleMedia';
 import { useModuleDescription } from '@/hooks/useModuleDescriptions';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
+import NFOrderForm from '@/components/NFOrderForm';
 
 const formatDescription = (text: string) => {
   return text.split('\n').map((line, index) => {
@@ -106,7 +107,7 @@ const NF = () => {
         <section className="py-8 md:py-12">
           <div className="container mx-auto px-4">
             <div className="max-w-5xl mx-auto space-y-8">
-              {/* Header - more compact */}
+              {/* Header */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -119,12 +120,11 @@ const NF = () => {
                   </div>
                 </div>
                 <h1 className="font-grotesk text-3xl md:text-4xl font-bold tracking-tight">
-                  {moduleDesc?.title || 'Notas Falsas (NF)'}
+                  {moduleDesc?.title || 'NF'}
                 </h1>
                 <p className="text-base text-muted-foreground max-w-2xl mx-auto">
-                  {moduleDesc?.subtitle || 'Conheça nossas notas e entenda como funciona o serviço.'}
+                  {moduleDesc?.subtitle || 'Faça seu pedido de forma rápida e segura.'}
                 </p>
-                {/* Scroll Indicator */}
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -140,6 +140,15 @@ const NF = () => {
                     <ChevronDown className="w-6 h-6 text-primary" />
                   </motion.div>
                 </motion.div>
+              </motion.div>
+
+              {/* Order Form */}
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15, duration: 0.3 }}
+              >
+                <NFOrderForm />
               </motion.div>
 
               {/* Videos/Images Section */}
@@ -200,7 +209,7 @@ const NF = () => {
                 )}
               </motion.div>
 
-              {/* Info Cards - more compact, side by side */}
+              {/* Info Cards */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -210,7 +219,7 @@ const NF = () => {
                 <Card className="md:col-span-1">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <Shield className="h-4 w-4 text-green-500" />
+                      <Shield className="h-4 w-4 text-primary" />
                       O que oferecemos?
                     </CardTitle>
                   </CardHeader>
@@ -224,7 +233,7 @@ const NF = () => {
                 <Card className="md:col-span-1">
                   <CardHeader className="pb-2">
                     <CardTitle className="flex items-center gap-2 text-sm">
-                      <Package className="h-4 w-4 text-blue-500" />
+                      <Package className="h-4 w-4 text-primary" />
                       Envio Discreto
                     </CardTitle>
                   </CardHeader>
@@ -247,7 +256,7 @@ const NF = () => {
                       'Atendimento 24h'
                     ].map((item, index) => (
                       <div key={index} className="flex items-center gap-2 text-sm">
-                        <CheckCircle className="h-3 w-3 text-green-500 flex-shrink-0" />
+                        <CheckCircle className="h-3 w-3 text-primary flex-shrink-0" />
                         <span>{item}</span>
                       </div>
                     ))}
@@ -256,51 +265,19 @@ const NF = () => {
               </motion.div>
 
               {/* Dynamic Description from Admin */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35, duration: 0.3 }}
-              >
-                {descLoading ? (
-                  <Card className="border-primary/20">
-                    <CardContent className="p-4 space-y-2">
-                      <Skeleton className="h-4 w-full" />
-                      <Skeleton className="h-4 w-3/4" />
-                      <Skeleton className="h-4 w-5/6" />
-                    </CardContent>
-                  </Card>
-                ) : moduleDesc?.description ? (
+              {moduleDesc?.description && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.35, duration: 0.3 }}
+                >
                   <Card className="border-primary/20 bg-gradient-to-br from-card to-primary/5">
                     <CardContent className="p-4 space-y-2 text-left text-sm">
                       {formatDescription(moduleDesc.description)}
                     </CardContent>
                   </Card>
-                ) : null}
-              </motion.div>
-
-              {/* Contact CTA */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4, duration: 0.5 }}
-                className="text-center"
-              >
-                <Card className="bg-secondary/50">
-                  <CardContent className="py-6">
-                    <p className="text-base font-medium mb-3">
-                      Interessado? Chama no WhatsApp!
-                    </p>
-                    <a
-                      href="https://wa.me/55996440121"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors text-sm"
-                    >
-                      Falar no WhatsApp
-                    </a>
-                  </CardContent>
-                </Card>
-              </motion.div>
+                </motion.div>
+              )}
             </div>
           </div>
         </section>
