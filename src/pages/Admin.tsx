@@ -84,6 +84,7 @@ import { useAdminNotifications } from '@/hooks/useAdminNotifications';
 import KLRemotaManager from '@/components/admin/KLRemotaManager';
 import BanManager from '@/components/admin/BanManager';
 import ConsultavelPricingManager from '@/components/admin/ConsultavelPricingManager';
+import ConsultavelRequestsManager from '@/components/admin/ConsultavelRequestsManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
@@ -1980,6 +1981,11 @@ const Admin = () => {
             <p className="text-muted-foreground text-sm mb-6">
               Adicione consultáveis CT ou ST que ficarão disponíveis para os clientes solicitarem.
             </p>
+
+            {/* Requests Manager */}
+            <div className="mb-8">
+              <ConsultavelRequestsManager />
+            </div>
 
             {/* Pricing Tiers Manager */}
             <div className="mb-8">

@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 // Request notification permission
 const requestNotificationPermission = async () => {
@@ -21,23 +22,32 @@ const requestNotificationPermission = async () => {
   return false;
 };
 
-// Play notification sound
-const playNotificationSound = () => {
+// Play notification sound with high volume
+const playNotificationSound = (loud = false) => {
   try {
     const audio = new Audio('/notification.mp3');
-    audio.volume = 1.0;
+    audio.volume = loud ? 1.0 : 0.8;
     audio.play().catch((e) => {
       console.log('Could not play notification sound:', e);
     });
+    
+    // Play twice for urgent notifications
+    if (loud) {
+      setTimeout(() => {
+        const audio2 = new Audio('/notification.mp3');
+        audio2.volume = 1.0;
+        audio2.play().catch(() => {});
+      }, 500);
+    }
   } catch (e) {
     console.log('Error creating audio:', e);
   }
 };
 
 // Send browser notification
-const sendBrowserNotification = (title: string, body: string, icon?: string) => {
+const sendBrowserNotification = (title: string, body: string, icon?: string, urgent = false) => {
   // Always play sound
-  playNotificationSound();
+  playNotificationSound(urgent);
 
   if (Notification.permission === 'granted') {
     const notification = new Notification(title, {
@@ -45,7 +55,7 @@ const sendBrowserNotification = (title: string, body: string, icon?: string) => 
       icon: icon || '/favicon.ico',
       badge: '/favicon.ico',
       tag: `admin-notification-${Date.now()}`,
-      requireInteraction: true,
+      requireInteraction: urgent,
     });
 
     notification.onclick = () => {
@@ -71,9 +81,33 @@ const formatUserInfo = async (userId: string) => {
 
 export const useAdminNotifications = (isAdmin: boolean) => {
   const hasRequestedPermission = useRef(false);
-  const lastPurchaseRef = useRef<string | null>(null);
-  const lastChatRef = useRef<string | null>(null);
+  const lastNotificationRef = useRef<Record<string, string>>({});
   const isInitialLoadRef = useRef(true);
+  const queryClient = useQueryClient();
+
+  const showNotification = useCallback((type: string, title: string, body: string, urgent = false) => {
+    // Prevent duplicate notifications
+    const key = `${type}-${body}`;
+    const now = Date.now().toString();
+    if (lastNotificationRef.current[type] === key) return;
+    lastNotificationRef.current[type] = key;
+
+    // Browser notification
+    sendBrowserNotification(title, body, undefined, urgent);
+
+    // In-app toast
+    if (urgent) {
+      toast.error(title, {
+        description: body,
+        duration: 15000,
+      });
+    } else {
+      toast.success(title, {
+        description: body,
+        duration: 10000,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -83,8 +117,8 @@ export const useAdminNotifications = (isAdmin: boolean) => {
       hasRequestedPermission.current = true;
       requestNotificationPermission().then(granted => {
         if (granted) {
-          toast.success('Notificações ativadas!', {
-            description: 'Você receberá alertas de novas vendas e chats.',
+          toast.success('🔔 Notificações ativadas!', {
+            description: 'Você receberá alertas de vendas, depósitos, chats e solicitações.',
           });
         }
       });
@@ -94,9 +128,9 @@ export const useAdminNotifications = (isAdmin: boolean) => {
   useEffect(() => {
     if (!isAdmin) return;
 
-    // Subscribe to new purchases
+    // Subscribe to new purchases (cards sold)
     const purchasesChannel = supabase
-      .channel('admin-purchases-notifications')
+      .channel('admin-purchases-notifications-v2')
       .on(
         'postgres_changes',
         {
@@ -105,35 +139,64 @@ export const useAdminNotifications = (isAdmin: boolean) => {
           table: 'purchases',
         },
         async (payload) => {
-          // Skip initial load notifications
           if (isInitialLoadRef.current) return;
           
-          const purchase = payload.new;
+          const purchase = payload.new as any;
           
-          // Prevent duplicate notifications
-          if (lastPurchaseRef.current === purchase.id) return;
-          lastPurchaseRef.current = purchase.id;
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('name')
+            .eq('id', purchase.user_id)
+            .single();
           
-          const userInfo = await formatUserInfo(purchase.user_id);
-          
+          const userName = profile?.name || 'Usuário';
           const title = '💰 Nova Venda!';
-          const body = `${userInfo.name} comprou ${purchase.card_name} por R$ ${Number(purchase.price).toFixed(2)}`;
+          const body = `${userName} comprou ${purchase.card_name} por R$ ${Number(purchase.price).toFixed(2)}`;
           
-          // Browser notification
-          sendBrowserNotification(title, body);
+          showNotification('purchase', title, body, true);
+          queryClient.invalidateQueries({ queryKey: ['purchases'] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to PIX payments (deposits)
+    const pixChannel = supabase
+      .channel('admin-pix-notifications-v2')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pix_payments',
+        },
+        async (payload) => {
+          if (isInitialLoadRef.current) return;
           
-          // In-app toast
-          toast.success(title, {
-            description: body,
-            duration: 10000,
-          });
+          const payment = payload.new as any;
+          const oldPayment = payload.old as any;
+          
+          // Only notify when status changes to approved
+          if (payment.status === 'approved' && oldPayment.status !== 'approved') {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', payment.user_id)
+              .single();
+            
+            const userName = profile?.name || 'Usuário';
+            const title = '💵 Depósito PIX Confirmado!';
+            const body = `${userName} depositou R$ ${Number(payment.amount).toFixed(2)}`;
+            
+            showNotification('pix', title, body, true);
+            queryClient.invalidateQueries({ queryKey: ['pix-payments'] });
+          }
         }
       )
       .subscribe();
 
     // Subscribe to new support chats
     const chatsChannel = supabase
-      .channel('admin-chats-notifications')
+      .channel('admin-chats-notifications-v2')
       .on(
         'postgres_changes',
         {
@@ -142,33 +205,21 @@ export const useAdminNotifications = (isAdmin: boolean) => {
           table: 'support_chats',
         },
         async (payload) => {
-          // Skip initial load notifications
           if (isInitialLoadRef.current) return;
           
-          const chat = payload.new;
-          
-          // Prevent duplicate notifications
-          if (lastChatRef.current === chat.id) return;
-          lastChatRef.current = chat.id;
-          
+          const chat = payload.new as any;
           const title = '💬 Novo Chat de Suporte!';
-          const body = `${chat.user_name} (${chat.user_email}) iniciou uma conversa`;
+          const body = `${chat.user_name} iniciou uma conversa`;
           
-          // Browser notification
-          sendBrowserNotification(title, body);
-          
-          // In-app toast
-          toast.info(title, {
-            description: body,
-            duration: 10000,
-          });
+          showNotification('chat', title, body, true);
+          queryClient.invalidateQueries({ queryKey: ['support-chats'] });
         }
       )
       .subscribe();
 
-    // Subscribe to new support messages (for when admin is not on chat tab)
+    // Subscribe to new support messages from users
     const messagesChannel = supabase
-      .channel('admin-messages-notifications')
+      .channel('admin-messages-notifications-v2')
       .on(
         'postgres_changes',
         {
@@ -178,12 +229,10 @@ export const useAdminNotifications = (isAdmin: boolean) => {
           filter: 'sender_type=eq.user',
         },
         async (payload) => {
-          // Skip initial load notifications
           if (isInitialLoadRef.current) return;
           
-          const message = payload.new;
+          const message = payload.new as any;
           
-          // Get chat info
           const { data: chat } = await supabase
             .from('support_chats')
             .select('user_name')
@@ -192,16 +241,69 @@ export const useAdminNotifications = (isAdmin: boolean) => {
           
           if (chat) {
             const title = '📩 Nova Mensagem!';
-            const body = `${chat.user_name}: ${message.message.slice(0, 50)}${message.message.length > 50 ? '...' : ''}`;
+            const msgPreview = message.message.slice(0, 40) + (message.message.length > 40 ? '...' : '');
+            const body = `${chat.user_name}: ${msgPreview}`;
             
-            // Browser notification
-            sendBrowserNotification(title, body);
+            showNotification('message', title, body, false);
+            queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to consultavel requests
+    const requestsChannel = supabase
+      .channel('admin-consultavel-requests-v2')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'consultavel_requests',
+        },
+        async (payload) => {
+          if (isInitialLoadRef.current) return;
+          
+          const request = payload.new as any;
+          const title = '🔔 NOVA SOLICITAÇÃO DE CONSULTÁVEL!';
+          const body = `${request.user_name} quer limite de R$ ${request.limit_amount} por R$ ${Number(request.price).toFixed(2)}`;
+          
+          showNotification('consultavel', title, body, true);
+          queryClient.invalidateQueries({ queryKey: ['consultavel-requests-all'] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to balance updates (manual credits added by admin)
+    const balanceChannel = supabase
+      .channel('admin-balance-notifications-v2')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'user_balances',
+        },
+        async (payload) => {
+          if (isInitialLoadRef.current) return;
+          
+          const balance = payload.new as any;
+          const oldBalance = payload.old as any;
+          
+          const diff = Number(balance.balance) - Number(oldBalance.balance);
+          
+          if (diff > 0 && diff !== Number(balance.balance)) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('name')
+              .eq('id', balance.user_id)
+              .single();
             
-            // In-app toast
-            toast.info(title, {
-              description: body,
-              duration: 5000,
-            });
+            const userName = profile?.name || 'Usuário';
+            const title = '💳 Saldo Atualizado!';
+            const body = `${userName} agora tem R$ ${Number(balance.balance).toFixed(2)} (+R$ ${diff.toFixed(2)})`;
+            
+            showNotification('balance', title, body, false);
           }
         }
       )
@@ -215,13 +317,17 @@ export const useAdminNotifications = (isAdmin: boolean) => {
     return () => {
       clearTimeout(timeout);
       supabase.removeChannel(purchasesChannel);
+      supabase.removeChannel(pixChannel);
       supabase.removeChannel(chatsChannel);
       supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(requestsChannel);
+      supabase.removeChannel(balanceChannel);
     };
-  }, [isAdmin]);
+  }, [isAdmin, showNotification, queryClient]);
 
   return {
     requestPermission: requestNotificationPermission,
     sendNotification: sendBrowserNotification,
+    playSound: playNotificationSound,
   };
 };
