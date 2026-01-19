@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, Check, Loader2, Copy, Eye, EyeOff, PlusCircle } from 'lucide-react';
@@ -18,7 +18,7 @@ interface PurchaseDialogProps {
   onClose: () => void;
 }
 
-const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
+const PurchaseDialog = forwardRef<HTMLDivElement, PurchaseDialogProps>(({ card, isOpen, onClose }, ref) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -33,9 +33,8 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  if (!card) return null;
-
-  const canAfford = balance >= card.price;
+  // Move early return after hooks
+  const canAfford = card ? balance >= card.price : false;
 
   const handleCopy = (text: string, field: string) => {
     navigator.clipboard.writeText(text);
@@ -47,6 +46,11 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
   const handlePurchase = async () => {
     if (!user) {
       toast.error('Você precisa estar logado para comprar');
+      return;
+    }
+
+    if (!card) {
+      toast.error('Nenhum card selecionado');
       return;
     }
 
@@ -120,6 +124,8 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
     setAcceptedTerms(false);
     onClose();
   };
+
+  if (!card) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -479,6 +485,8 @@ const PurchaseDialog = ({ card, isOpen, onClose }: PurchaseDialogProps) => {
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+PurchaseDialog.displayName = 'PurchaseDialog';
 
 export default PurchaseDialog;
