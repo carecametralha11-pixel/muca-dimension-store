@@ -5,12 +5,13 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ConsultavelItem, { ConsultavelItemData } from '@/components/ConsultavelItem';
 import ConsultavelPurchaseDialog from '@/components/ConsultavelPurchaseDialog';
-import ConsultavelContactForm from '@/components/ConsultavelContactForm';
+import ConsultavelTierSelector from '@/components/ConsultavelTierSelector';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { useConsultaveis, Consultavel } from '@/hooks/useConsultaveis';
 import { useConsultavelImages } from '@/hooks/useConsultavelImages';
+import { usePricingTiers } from '@/hooks/useConsultavelPricing';
 import { supabase } from '@/integrations/supabase/client';
 import { useQueryClient } from '@tanstack/react-query';
 
@@ -418,9 +419,9 @@ const ConsultavelPage = () => {
             </div>
           )}
 
-          {/* Empty State - Show Contact Form when no consultaveis exist */}
+          {/* Empty State - Show Tier Selector when no consultaveis exist */}
           {!isLoading && consultaveisData.length === 0 && (
-            <ConsultavelContactForm />
+            <ConsultavelTierSelector />
           )}
 
           {/* Empty State - Show message when filters return no results */}

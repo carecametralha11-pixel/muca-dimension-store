@@ -292,6 +292,93 @@ export type Database = {
           },
         ]
       }
+      consultavel_pricing_tiers: {
+        Row: {
+          created_at: string
+          display_order: number | null
+          id: string
+          is_active: boolean
+          limit_amount: number
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean
+          limit_amount: number
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_order?: number | null
+          id?: string
+          is_active?: boolean
+          limit_amount?: number
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      consultavel_requests: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          id: string
+          limit_amount: number
+          price: number
+          status: string
+          tier_id: string | null
+          updated_at: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          id?: string
+          limit_amount: number
+          price: number
+          status?: string
+          tier_id?: string | null
+          updated_at?: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          id?: string
+          limit_amount?: number
+          price?: number
+          status?: string
+          tier_id?: string | null
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consultavel_requests_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "support_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consultavel_requests_tier_id_fkey"
+            columns: ["tier_id"]
+            isOneToOne: false
+            referencedRelation: "consultavel_pricing_tiers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           created_at: string

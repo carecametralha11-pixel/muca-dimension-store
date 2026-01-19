@@ -24,14 +24,9 @@ const Footer = () => {
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <span>© {new Date().getFullYear()} Estelio MUCA</span>
             <span>•</span>
-            <a 
-              href="https://wa.me/5514982097244" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="hover:text-foreground transition-colors"
-            >
+            <span className="text-muted-foreground">
               Desenvolvido por Mike
-            </a>
+            </span>
           </div>
         </div>
       </div>

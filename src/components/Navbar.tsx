@@ -1,11 +1,12 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, LogOut, Settings, Wallet, Menu, X, Home, CreditCard, Plus, GraduationCap, FileText, Search, IdCard, History, Headphones } from 'lucide-react';
+import { User, LogOut, Settings, Wallet, Menu, X, Home, CreditCard, Plus, GraduationCap, FileText, Search, IdCard, History, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBalance } from '@/hooks/useBalance';
 import logo from '@/assets/logo-muca.png';
+import { openSupportChat } from '@/components/chat/SupportChatWidget';
 
 const Navbar = () => {
   const { user, profile, logout, isAdmin } = useAuth();
@@ -23,7 +24,10 @@ const Navbar = () => {
     setIsMobileMenuOpen(false);
   };
 
-  const SUPPORT_URL = 'https://wa.me/5544996440121';
+  const handleSupportClick = () => {
+    setIsMobileMenuOpen(false);
+    openSupportChat();
+  };
 
   const navItems = [
     { to: '/', label: 'Início', icon: Home },
@@ -73,15 +77,16 @@ const Navbar = () => {
                 </Button>
               </Link>
             ))}
-            <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer">
+            {user && (
               <Button 
                 variant="ghost" 
                 size="sm"
+                onClick={handleSupportClick}
                 className="text-muted-foreground hover:text-foreground font-medium"
               >
                 Suporte
               </Button>
-            </a>
+            )}
           </div>
 
           {/* Desktop Actions */}
@@ -164,12 +169,12 @@ const Navbar = () => {
                   </Link>
                 ))}
 
-                <a href={SUPPORT_URL} target="_blank" rel="noopener noreferrer" onClick={handleNavClick}>
-                  <Button variant="ghost" className="w-full justify-start">
-                    <Headphones className="h-4 w-4 mr-2 text-muted-foreground" />
+                {user && (
+                  <Button variant="ghost" className="w-full justify-start" onClick={handleSupportClick}>
+                    <MessageCircle className="h-4 w-4 mr-2 text-muted-foreground" />
                     Suporte
                   </Button>
-                </a>
+                )}
 
                 {user && isAdmin && (
                   <Link to="/admin" onClick={handleNavClick}>
