@@ -10,6 +10,7 @@ import {
   Trash2,
   Package,
   TrendingUp,
+  DollarSign,
   Loader2,
   ArrowLeft,
   Wallet,
@@ -86,6 +87,7 @@ import BanManager from '@/components/admin/BanManager';
 import ConsultavelPricingManager from '@/components/admin/ConsultavelPricingManager';
 import ConsultavelRequestsManager from '@/components/admin/ConsultavelRequestsManager';
 import NotificationsManager from '@/components/admin/NotificationsManager';
+import InitiateChatManager from '@/components/admin/InitiateChatManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
@@ -249,6 +251,7 @@ const Admin = () => {
     { label: 'Usuários', value: users.length, icon: Users, color: 'text-portal-cyan' },
     { label: 'Vendas', value: purchases.length, icon: Package, color: 'text-space-purple' },
     { label: 'Ganhos PIX', value: `R$ ${totalEarnings.toFixed(2)}`, icon: TrendingUp, color: 'text-emerald-500' },
+    { label: 'Comissão', value: `R$ 0,00`, icon: DollarSign, color: 'text-yellow-500' },
     { label: 'Consultáveis', value: totalConsultaveis, icon: Search, color: 'text-amber-500' },
     { label: 'Mídias', value: allMedia.length, icon: Video, color: 'text-blue-500' },
   ];
@@ -2214,6 +2217,11 @@ const Admin = () => {
             <p className="text-muted-foreground text-sm">
               Gerencie as conversas de suporte com os clientes em tempo real.
             </p>
+            
+            {/* Initiate Chat with Any User */}
+            <InitiateChatManager />
+            
+            {/* Chat Panel */}
             <AdminChatPanel />
           </motion.div>
         )}
