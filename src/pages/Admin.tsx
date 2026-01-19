@@ -129,6 +129,7 @@ const Admin = () => {
   useAdminNotifications(isAdmin ?? false);
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota' | 'bans' | 'notifications'>('dashboard');
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [manageImagesConsultavel, setManageImagesConsultavel] = useState<Consultavel | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -1996,7 +1997,12 @@ const Admin = () => {
 
             {/* Requests Manager */}
             <div className="mb-8">
-              <ConsultavelRequestsManager />
+              <ConsultavelRequestsManager 
+                onNavigateToChat={(chatId) => {
+                  setSelectedChatId(chatId);
+                  setActiveTab('support');
+                }} 
+              />
             </div>
 
             {/* Pricing Tiers Manager */}
@@ -2222,7 +2228,7 @@ const Admin = () => {
             <InitiateChatManager />
             
             {/* Chat Panel */}
-            <AdminChatPanel />
+            <AdminChatPanel initialChatId={selectedChatId} />
           </motion.div>
         )}
 

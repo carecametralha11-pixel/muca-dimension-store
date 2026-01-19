@@ -39,7 +39,11 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 
-const ConsultavelRequestsManager: React.FC = () => {
+interface ConsultavelRequestsManagerProps {
+  onNavigateToChat?: (chatId: string) => void;
+}
+
+const ConsultavelRequestsManager: React.FC<ConsultavelRequestsManagerProps> = ({ onNavigateToChat }) => {
   const { user } = useAuth();
   const { data: requests = [], isLoading } = useAllConsultavelRequests();
   const { data: allChats = [] } = useAllChats();
@@ -79,28 +83,35 @@ const ConsultavelRequestsManager: React.FC = () => {
     }).format(value);
   };
 
-  const handleContactUser = async (request: ConsultavelRequest) => {
+  const handleContactUser = async (request: ConsultavelRequest, sendAutoMessage = true) => {
     if (!user || !request.chat_id) return;
     
     setProcessingId(request.id);
     
     try {
-      // Send automatic message
-      await sendMessage.mutateAsync({
-        chatId: request.chat_id,
-        senderId: user.id,
-        senderType: 'admin',
-        message: `Olá ${request.user_name.split(' ')[0]}! Vi sua solicitação de consultável com limite de ${formatCurrency(request.limit_amount)}. Estou aqui para te ajudar! 🚀`,
-      });
+      // Only send auto message on first contact (when status is pending)
+      if (sendAutoMessage && request.status === 'pending') {
+        await sendMessage.mutateAsync({
+          chatId: request.chat_id,
+          senderId: user.id,
+          senderType: 'admin',
+          message: `Olá ${request.user_name.split(' ')[0]}! Vi sua solicitação de consultável com limite de ${formatCurrency(request.limit_amount)}. Estou aqui para te ajudar! 🚀`,
+        });
 
-      // Update request status
-      await updateRequest.mutateAsync({
-        id: request.id,
-        status: 'in_progress',
-      });
+        // Update request status
+        await updateRequest.mutateAsync({
+          id: request.id,
+          status: 'in_progress',
+        });
+      }
 
-      toast.success('Mensagem enviada!', {
-        description: 'O cliente foi notificado e o popup fechará automaticamente.',
+      // Navigate to chat
+      if (onNavigateToChat) {
+        onNavigateToChat(request.chat_id);
+      }
+
+      toast.success('Abrindo chat...', {
+        description: 'Você será redirecionado para a conversa.',
       });
     } catch (error) {
       console.error('Error contacting user:', error);
