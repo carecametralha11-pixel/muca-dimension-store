@@ -34,7 +34,11 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import useAdminChatNotifications from '@/hooks/useAdminChatNotifications';
 
-const AdminChatPanel: React.FC = () => {
+interface AdminChatPanelProps {
+  initialChatId?: string | null;
+}
+
+const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ initialChatId }) => {
   const { user } = useAuth();
   const [selectedChat, setSelectedChat] = useState<SupportChat | null>(null);
   const [message, setMessage] = useState('');
@@ -52,6 +56,16 @@ const AdminChatPanel: React.FC = () => {
 
   const { data: chats, isLoading: loadingChats } = useAllChats();
   const { data: messages, isLoading: loadingMessages } = useChatMessages(selectedChat?.id);
+
+  // Auto-select chat when initialChatId is provided
+  useEffect(() => {
+    if (initialChatId && chats) {
+      const chatToSelect = chats.find(c => c.id === initialChatId);
+      if (chatToSelect) {
+        setSelectedChat(chatToSelect);
+      }
+    }
+  }, [initialChatId, chats]);
   const sendMessage = useSendMessage();
   const sendMessageWithAttachment = useSendMessageWithAttachment();
   const markAsRead = useMarkAsRead();
