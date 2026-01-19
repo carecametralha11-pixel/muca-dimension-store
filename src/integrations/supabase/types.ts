@@ -379,6 +379,86 @@ export type Database = {
           },
         ]
       }
+      diploma_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      diploma_orders: {
+        Row: {
+          birth_date: string
+          chat_id: string | null
+          course_type: string
+          cpf: string
+          created_at: string
+          full_name: string
+          id: string
+          price: number
+          status: string
+          updated_at: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          birth_date: string
+          chat_id?: string | null
+          course_type: string
+          cpf: string
+          created_at?: string
+          full_name: string
+          id?: string
+          price: number
+          status?: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          birth_date?: string
+          chat_id?: string | null
+          course_type?: string
+          cpf?: string
+          created_at?: string
+          full_name?: string
+          id?: string
+          price?: number
+          status?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "diploma_orders_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "support_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedbacks: {
         Row: {
           created_at: string
@@ -597,6 +677,59 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      nf_orders: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          delivery_address: string
+          full_name: string
+          id: string
+          price: number
+          quantity: number
+          status: string
+          updated_at: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          delivery_address: string
+          full_name: string
+          id?: string
+          price: number
+          quantity: number
+          status?: string
+          updated_at?: string
+          user_email: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          delivery_address?: string
+          full_name?: string
+          id?: string
+          price?: number
+          quantity?: number
+          status?: string
+          updated_at?: string
+          user_email?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nf_orders_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "support_chats"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pix_payments: {
         Row: {
