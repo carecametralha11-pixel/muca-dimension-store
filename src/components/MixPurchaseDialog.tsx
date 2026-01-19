@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, forwardRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Wallet, Check, Loader2, Package, Eye, EyeOff, Copy, PlusCircle } from 'lucide-react';
@@ -24,7 +24,7 @@ interface MixPurchase {
   quantity: number;
 }
 
-const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => {
+const MixPurchaseDialog = forwardRef<HTMLDivElement, MixPurchaseDialogProps>(({ mix, isOpen, onClose }, ref) => {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user } = useAuth();
@@ -38,9 +38,7 @@ const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => 
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  if (!mix) return null;
-
-  const canAfford = balance >= mix.price;
+  const canAfford = mix ? balance >= mix.price : false;
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -52,6 +50,11 @@ const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => 
   const handlePurchase = async () => {
     if (!user) {
       toast.error('Você precisa estar logado para comprar');
+      return;
+    }
+
+    if (!mix) {
+      toast.error('Nenhum mix selecionado');
       return;
     }
 
@@ -116,6 +119,8 @@ const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => 
     setAcceptedTerms(false);
     onClose();
   };
+
+  if (!mix) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -348,6 +353,8 @@ const MixPurchaseDialog = ({ mix, isOpen, onClose }: MixPurchaseDialogProps) => 
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+MixPurchaseDialog.displayName = 'MixPurchaseDialog';
 
 export default MixPurchaseDialog;

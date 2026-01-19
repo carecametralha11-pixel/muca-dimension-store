@@ -10,7 +10,6 @@ import {
   Trash2,
   Package,
   TrendingUp,
-  DollarSign,
   Loader2,
   ArrowLeft,
   Wallet,
@@ -35,7 +34,8 @@ import {
   ExternalLink,
   Newspaper,
   Car,
-  GraduationCap
+  GraduationCap,
+  Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -85,6 +85,7 @@ import KLRemotaManager from '@/components/admin/KLRemotaManager';
 import BanManager from '@/components/admin/BanManager';
 import ConsultavelPricingManager from '@/components/admin/ConsultavelPricingManager';
 import ConsultavelRequestsManager from '@/components/admin/ConsultavelRequestsManager';
+import NotificationsManager from '@/components/admin/NotificationsManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
@@ -125,7 +126,7 @@ const Admin = () => {
   // Enable admin notifications
   useAdminNotifications(isAdmin ?? false);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota' | 'bans'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota' | 'bans' | 'notifications'>('dashboard');
   const [manageImagesConsultavel, setManageImagesConsultavel] = useState<Consultavel | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -243,15 +244,11 @@ const Admin = () => {
     'cnh': allMedia.filter(m => m.module_name === 'cnh').length,
   };
 
-  // Calculate 50% commission
-  const commission = totalEarnings * 0.5;
-
   const stats = [
     { label: 'Total de Cards', value: cards.length, icon: CreditCard, color: 'text-portal-green' },
     { label: 'Usuários', value: users.length, icon: Users, color: 'text-portal-cyan' },
     { label: 'Vendas', value: purchases.length, icon: Package, color: 'text-space-purple' },
     { label: 'Ganhos PIX', value: `R$ ${totalEarnings.toFixed(2)}`, icon: TrendingUp, color: 'text-emerald-500' },
-    { label: 'Comissão 50%', value: `R$ ${commission.toFixed(2)}`, icon: DollarSign, color: 'text-yellow-500' },
     { label: 'Consultáveis', value: totalConsultaveis, icon: Search, color: 'text-amber-500' },
     { label: 'Mídias', value: allMedia.length, icon: Video, color: 'text-blue-500' },
   ];
@@ -792,6 +789,7 @@ const Admin = () => {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'notifications', label: 'Notificações', icon: Bell },
     { id: 'cards', label: 'Cards', icon: CreditCard },
     { id: 'users', label: 'Usuários', icon: Users },
     { id: 'bans', label: 'Banimentos', icon: Ban },
@@ -1177,6 +1175,17 @@ const Admin = () => {
                 </div>
               </CardContent>
             </Card>
+          </motion.div>
+        )}
+
+        {/* Notifications Tab */}
+        {activeTab === 'notifications' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <NotificationsManager isAdmin={isAdmin ?? false} />
           </motion.div>
         )}
 
