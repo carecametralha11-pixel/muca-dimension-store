@@ -28,6 +28,7 @@ const Atestados = lazy(() => import("./pages/Atestados"));
 const PedirAtestado = lazy(() => import("./pages/PedirAtestado"));
 const Contas99Uber = lazy(() => import("./pages/Contas99Uber"));
 const SolicitarConta = lazy(() => import("./pages/SolicitarConta"));
+const Diploma = lazy(() => import("./pages/Diploma"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 const queryClient = new QueryClient({
@@ -94,6 +95,7 @@ const AppContent = () => {
               <Route path="/pedir-atestado" element={<ProtectedRoute><PedirAtestado /></ProtectedRoute>} />
               <Route path="/contas-99-uber" element={<ProtectedRoute><Contas99Uber /></ProtectedRoute>} />
               <Route path="/solicitar-conta" element={<ProtectedRoute><SolicitarConta /></ProtectedRoute>} />
+              <Route path="/diploma" element={<ProtectedRoute><Diploma /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Suspense>

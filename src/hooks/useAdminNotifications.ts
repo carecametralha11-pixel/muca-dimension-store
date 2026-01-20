@@ -5,7 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 
 export interface AdminNotification {
   id: string;
-  type: 'purchase' | 'pix' | 'chat' | 'message' | 'consultavel' | 'balance' | 'account_request';
+  type: 'purchase' | 'pix' | 'chat' | 'message' | 'consultavel' | 'balance' | 'account_request' | 'nf_order' | 'diploma_order';
   title: string;
   body: string;
   timestamp: Date;
@@ -424,6 +424,52 @@ export const useAdminNotifications = (isAdmin: boolean) => {
       )
       .subscribe();
 
+    // Subscribe to NF orders
+    const nfOrdersChannel = supabase
+      .channel('admin-nf-orders-v3')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'nf_orders',
+        },
+        async (payload) => {
+          if (isInitialLoadRef.current) return;
+          
+          const order = payload.new as any;
+          const title = '📦 Novo Pedido de NF!';
+          const body = `${order.user_name} pediu R$ ${order.quantity} em NF por R$ ${Number(order.price).toFixed(2)}`;
+          
+          showNotification('nf_order', title, body, true, order);
+          queryClient.invalidateQueries({ queryKey: ['nf-orders-all'] });
+        }
+      )
+      .subscribe();
+
+    // Subscribe to Diploma orders
+    const diplomaOrdersChannel = supabase
+      .channel('admin-diploma-orders-v3')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'diploma_orders',
+        },
+        async (payload) => {
+          if (isInitialLoadRef.current) return;
+          
+          const order = payload.new as any;
+          const title = '🎓 Novo Pedido de Diploma!';
+          const body = `${order.user_name} pediu diploma de ${order.course_type} por R$ ${Number(order.price).toFixed(2)}`;
+          
+          showNotification('diploma_order', title, body, true, order);
+          queryClient.invalidateQueries({ queryKey: ['diploma-orders-all'] });
+        }
+      )
+      .subscribe();
+
     // Mark initial load as complete after a short delay
     const timeout = setTimeout(() => {
       isInitialLoadRef.current = false;
@@ -438,6 +484,8 @@ export const useAdminNotifications = (isAdmin: boolean) => {
       supabase.removeChannel(requestsChannel);
       supabase.removeChannel(balanceChannel);
       supabase.removeChannel(accountRequestsChannel);
+      supabase.removeChannel(nfOrdersChannel);
+      supabase.removeChannel(diplomaOrdersChannel);
     };
   }, [isAdmin, showNotification, queryClient]);
 
