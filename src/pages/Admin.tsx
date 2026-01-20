@@ -88,6 +88,8 @@ import ConsultavelPricingManager from '@/components/admin/ConsultavelPricingMana
 import ConsultavelRequestsManager from '@/components/admin/ConsultavelRequestsManager';
 import NotificationsManager from '@/components/admin/NotificationsManager';
 import InitiateChatManager from '@/components/admin/InitiateChatManager';
+import NFOrdersManager from '@/components/admin/NFOrdersManager';
+import DiplomaManager from '@/components/admin/DiplomaManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
@@ -128,7 +130,7 @@ const Admin = () => {
   // Enable admin notifications
   useAdminNotifications(isAdmin ?? false);
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota' | 'bans' | 'notifications'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'cards' | 'users' | 'history' | 'media' | 'descriptions' | 'consultaveis' | 'sales' | 'support' | 'feedbacks' | 'news' | 'account-requests' | 'kl-remota' | 'bans' | 'notifications' | 'nf-orders' | 'diploma'>('dashboard');
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [manageImagesConsultavel, setManageImagesConsultavel] = useState<Consultavel | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -216,6 +218,7 @@ const Admin = () => {
     { value: 'nf', label: 'NF' },
     { value: 'consultavel', label: 'Consultável' },
     { value: 'cnh', label: 'CNH' },
+    { value: 'diploma', label: 'Diploma UNINTER' },
   ];
 
   if (authLoading) {
@@ -798,6 +801,8 @@ const Admin = () => {
     { id: 'users', label: 'Usuários', icon: Users },
     { id: 'bans', label: 'Banimentos', icon: Ban },
     { id: 'sales', label: 'Vendas', icon: Package },
+    { id: 'nf-orders', label: 'Pedidos NF', icon: Package },
+    { id: 'diploma', label: 'Diploma', icon: GraduationCap },
     { id: 'account-requests', label: 'Contas 99/Uber', icon: Car },
     { id: 'history', label: 'Histórico', icon: History },
     { id: 'media', label: 'Mídias', icon: Video },
@@ -2229,6 +2234,44 @@ const Admin = () => {
             
             {/* Chat Panel */}
             <AdminChatPanel initialChatId={selectedChatId} />
+          </motion.div>
+        )}
+
+        {/* NF Orders Management */}
+        {activeTab === 'nf-orders' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <h1 className="font-orbitron text-2xl lg:text-3xl font-bold text-foreground">
+              Pedidos de NF
+            </h1>
+            <NFOrdersManager 
+              onNavigateToChat={(chatId) => {
+                setSelectedChatId(chatId);
+                setActiveTab('support');
+              }}
+            />
+          </motion.div>
+        )}
+
+        {/* Diploma Management */}
+        {activeTab === 'diploma' && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
+            <h1 className="font-orbitron text-2xl lg:text-3xl font-bold text-foreground">
+              Diploma UNINTER
+            </h1>
+            <DiplomaManager 
+              onNavigateToChat={(chatId) => {
+                setSelectedChatId(chatId);
+                setActiveTab('support');
+              }}
+            />
           </motion.div>
         )}
 

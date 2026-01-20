@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Loader2, Mic, MicOff, Paperclip } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Mic, MicOff, Paperclip, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   useUserChat, 
@@ -12,11 +13,13 @@ import {
   useMarkAsRead,
   useSendMessageWithAttachment
 } from '@/hooks/useSupportChat';
+import { useHasDeposited } from '@/hooks/useHasDeposited';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import ImagePreviewModal from './ImagePreviewModal';
+import { Link } from 'react-router-dom';
 
 // Global event emitter for opening chat
 export const openSupportChat = () => {
@@ -25,6 +28,7 @@ export const openSupportChat = () => {
 
 const SupportChatWidget: React.FC = () => {
   const { user, profile, isAdmin, isLoading } = useAuth();
+  const { data: hasDeposited, isLoading: depositLoading } = useHasDeposited(user?.id);
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState('');
   const [isRecording, setIsRecording] = useState(false);
@@ -327,9 +331,28 @@ const SupportChatWidget: React.FC = () => {
 
             {/* Chat Content */}
             <div className="flex-1 flex flex-col overflow-hidden">
-              {loadingChat ? (
+              {loadingChat || depositLoading ? (
                 <div className="flex-1 flex items-center justify-center">
                   <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : !hasDeposited ? (
+                <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+                  <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Depósito Necessário</h3>
+                  <p className="text-muted-foreground text-sm mb-4">
+                    Para conversar com o suporte, você precisa ter feito pelo menos um depósito no site.
+                  </p>
+                  <Alert className="text-left mb-4">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-xs">
+                      Isso ajuda a manter nosso atendimento exclusivo para clientes reais.
+                    </AlertDescription>
+                  </Alert>
+                  <Link to="/add-balance">
+                    <Button>
+                      Adicionar Saldo
+                    </Button>
+                  </Link>
                 </div>
               ) : !existingChat ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
