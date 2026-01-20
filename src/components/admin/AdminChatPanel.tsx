@@ -53,6 +53,8 @@ const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ initialChatId }) => {
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const previousChatsCountRef = useRef<number>(0);
+  const lastMessageCountRef = useRef<number>(0);
+  const isInitialLoadRef = useRef<boolean>(true);
 
   const { data: chats, isLoading: loadingChats } = useAllChats();
   const { data: messages, isLoading: loadingMessages } = useChatMessages(selectedChat?.id);
@@ -76,12 +78,28 @@ const AdminChatPanel: React.FC<AdminChatPanelProps> = ({ initialChatId }) => {
   // Enable admin notifications with sound
   const { playNotificationSound } = useAdminChatNotifications();
 
-  // Scroll to bottom when new messages arrive
+  // Scroll to bottom only when NEW messages arrive or chat is first selected
   useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    if (!messages) return;
+    
+    const currentCount = messages.length;
+    
+    // Only scroll if there are new messages (not on every render)
+    if (currentCount > lastMessageCountRef.current || isInitialLoadRef.current) {
+      if (messagesEndRef.current) {
+        messagesEndRef.current.scrollIntoView({ behavior: isInitialLoadRef.current ? 'auto' : 'smooth' });
+      }
+      isInitialLoadRef.current = false;
     }
+    
+    lastMessageCountRef.current = currentCount;
   }, [messages]);
+
+  // Reset refs when chat changes
+  useEffect(() => {
+    isInitialLoadRef.current = true;
+    lastMessageCountRef.current = 0;
+  }, [selectedChat?.id]);
 
   // Mark messages as read when chat is selected
   useEffect(() => {

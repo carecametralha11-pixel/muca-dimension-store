@@ -846,13 +846,13 @@ const Admin = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="lg:hidden fixed inset-0 top-[73px] z-40 bg-background/95 backdrop-blur-sm"
+            className="lg:hidden fixed inset-0 top-[73px] z-40 bg-background/95 backdrop-blur-sm overflow-y-auto"
           >
             <motion.nav
               initial={{ x: -20, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: -20, opacity: 0 }}
-              className="p-4 space-y-2"
+              className="p-4 space-y-2 pb-24"
             >
               {tabs.map((tab) => (
                 <button
