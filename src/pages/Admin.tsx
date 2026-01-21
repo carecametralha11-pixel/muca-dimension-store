@@ -963,74 +963,99 @@ const Admin = () => {
             </div>
 
             {/* Backup & Restore Section */}
-            <Card className="border-2 border-portal-green/30">
+            <Card className="border-2 border-amber-500/50 bg-gradient-to-br from-amber-500/5 to-orange-500/5">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2 text-base lg:text-lg">
-                  <Download className="h-5 w-5 text-portal-green" />
-                  Backup & Restauração
+                  <Database className="h-5 w-5 text-amber-500" />
+                  🔒 Backup COMPLETO & Restauração
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Backup Rápido (JSON) */}
-                <div>
-                  <h4 className="font-semibold text-sm mb-2 text-portal-cyan">Backup Rápido (Produtos e Dados)</h4>
-                  <p className="text-xs text-muted-foreground mb-3">
-                    Exporta cards, consultáveis, mídias, feedbacks e compras. <strong>Não inclui logins de usuários.</strong>
+                {/* Info Alert */}
+                <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
+                  <h4 className="font-semibold text-amber-400 mb-2 flex items-center gap-2">
+                    <Database className="h-4 w-4" />
+                    Backup COMPLETO do Sistema
+                  </h4>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Este backup exporta <strong className="text-amber-400">TODAS</strong> as tabelas do sistema:
                   </p>
-                  <div className="flex flex-wrap gap-3">
-                    <Button 
-                      onClick={() => createBackup.mutate()}
-                      disabled={createBackup.isPending}
-                      className="bg-portal-green hover:bg-portal-green/80"
-                    >
-                      {createBackup.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <Download className="h-4 w-4 mr-2" />
-                      )}
-                      Fazer Backup Rápido
-                    </Button>
-                    <input
-                      type="file"
-                      accept=".json"
-                      ref={backupFileInputRef}
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            try {
-                              const data = JSON.parse(event.target?.result as string);
-                              if (confirm('Tem certeza que deseja restaurar este backup? Os dados existentes serão atualizados.')) {
-                                restoreBackup.mutate(data);
-                              }
-                            } catch (error) {
-                              toast.error('Arquivo de backup inválido');
-                            }
-                          };
-                          reader.readAsText(file);
-                          e.target.value = '';
-                        }
-                      }}
-                      className="hidden"
-                    />
-                    <Button 
-                      variant="outline"
-                      onClick={() => backupFileInputRef.current?.click()}
-                      disabled={restoreBackup.isPending}
-                      className="border-portal-cyan/50 text-portal-cyan hover:bg-portal-cyan/10"
-                    >
-                      {restoreBackup.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                      ) : (
-                        <UploadCloud className="h-4 w-4 mr-2" />
-                      )}
-                      Importar Backup Rápido
-                    </Button>
-                  </div>
+                  <ul className="text-xs text-muted-foreground space-y-1 ml-4 list-disc">
+                    <li>Cards, Card Mixes, Consultáveis e Imagens</li>
+                    <li>Preços de Consultáveis (Tiers)</li>
+                    <li>Mídias e Descrições de todos os módulos</li>
+                    <li>Configurações de Diploma e KL Remota</li>
+                    <li>Pedidos de NF, Diploma, Consultáveis</li>
+                    <li>Solicitações de Contas</li>
+                    <li>Novidades, Feedbacks e Banimentos</li>
+                    <li>Chats de suporte e mensagens</li>
+                  </ul>
+                  <p className="text-xs text-amber-400 mt-3 font-semibold">
+                    ⚠️ Use este backup antes de fazer REMIX do projeto!
+                  </p>
                 </div>
 
-                {/* Backup Completo (Banco de Dados) */}
+                {/* Backup Buttons */}
+                <div className="flex flex-wrap gap-3">
+                  <Button 
+                    onClick={() => createBackup.mutate()}
+                    disabled={createBackup.isPending}
+                    className="bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold shadow-lg"
+                    size="lg"
+                  >
+                    {createBackup.isPending ? (
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    ) : (
+                      <Download className="h-5 w-5 mr-2" />
+                    )}
+                    FAZER BACKUP COMPLETO
+                  </Button>
+                  <input
+                    type="file"
+                    accept=".json"
+                    ref={backupFileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                          try {
+                            const data = JSON.parse(event.target?.result as string);
+                            if (confirm('⚠️ ATENÇÃO!\n\nTem certeza que deseja IMPORTAR este backup?\n\nTodos os dados existentes serão ATUALIZADOS com os dados do arquivo.\n\nEsta ação não pode ser desfeita!')) {
+                              restoreBackup.mutate(data);
+                            }
+                          } catch (error) {
+                            toast.error('Arquivo de backup inválido');
+                          }
+                        };
+                        reader.readAsText(file);
+                        e.target.value = '';
+                      }
+                    }}
+                    className="hidden"
+                  />
+                  <Button 
+                    variant="outline"
+                    onClick={() => backupFileInputRef.current?.click()}
+                    disabled={restoreBackup.isPending}
+                    className="border-2 border-portal-cyan text-portal-cyan hover:bg-portal-cyan/10 font-bold"
+                    size="lg"
+                  >
+                    {restoreBackup.isPending ? (
+                      <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    ) : (
+                      <UploadCloud className="h-5 w-5 mr-2" />
+                    )}
+                    IMPORTAR BACKUP
+                  </Button>
+                </div>
+
+                {/* Status Info */}
+                <div className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 space-y-1">
+                  <p>📁 O arquivo de backup é salvo em formato JSON</p>
+                  <p>🔄 Ao importar, os dados são atualizados (não duplicados)</p>
+                  <p>🛡️ Dados de usuários (profiles, roles) NÃO são importados por segurança</p>
+                </div>
               </CardContent>
             </Card>
 
