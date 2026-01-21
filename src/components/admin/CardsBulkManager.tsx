@@ -43,32 +43,38 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
   const bulkUpdatePrice = useBulkUpdatePrice();
 
   const filteredCards = cards.filter(c => c.category === 'INFO' && c.subcategory === subcategory);
+  // Cards disponíveis para seleção (não vendidos)
+  const availableCards = filteredCards.filter(c => c.stock > 0);
 
   const uniqueBanks = useMemo(() => {
     const banks = new Set<string>();
-    filteredCards.forEach(card => {
+    availableCards.forEach(card => {
       if (card.bankName) banks.add(card.bankName);
     });
     return Array.from(banks).sort();
-  }, [filteredCards]);
+  }, [availableCards]);
 
   const uniqueLevels = useMemo(() => {
     const levels = new Set<string>();
-    filteredCards.forEach(card => {
+    availableCards.forEach(card => {
       if (card.cardLevel) levels.add(card.cardLevel);
     });
     return Array.from(levels).sort();
-  }, [filteredCards]);
+  }, [availableCards]);
 
   const toggleSelectAll = () => {
-    if (selectedCards.size === filteredCards.length) {
+    if (selectedCards.size === availableCards.length) {
       setSelectedCards(new Set());
     } else {
-      setSelectedCards(new Set(filteredCards.map(c => c.id)));
+      setSelectedCards(new Set(availableCards.map(c => c.id)));
     }
   };
 
   const toggleSelectCard = (cardId: string) => {
+    // Não permitir seleção de cards vendidos
+    const card = availableCards.find(c => c.id === cardId);
+    if (!card) return;
+    
     const newSelected = new Set(selectedCards);
     if (newSelected.has(cardId)) {
       newSelected.delete(cardId);
@@ -136,12 +142,15 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
     if (priceFilterType === 'selected') {
       return selectedCards.size;
     } else if (priceFilterType === 'bank' && priceFilterValue) {
-      return filteredCards.filter(c => c.bankName === priceFilterValue).length;
+      return availableCards.filter(c => c.bankName === priceFilterValue).length;
     } else if (priceFilterType === 'level' && priceFilterValue) {
-      return filteredCards.filter(c => c.cardLevel === priceFilterValue).length;
+      return availableCards.filter(c => c.cardLevel === priceFilterValue).length;
     }
     return 0;
   };
+
+  // Número de cards vendidos
+  const soldCardsCount = filteredCards.filter(c => c.stock === 0).length;
 
   if (filteredCards.length === 0) return null;
 
@@ -151,13 +160,19 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
       <div className="flex flex-wrap items-center gap-2 p-3 rounded-lg bg-muted/50 border border-border">
         <div className="flex items-center gap-2">
           <Checkbox
-            checked={selectedCards.size === filteredCards.length && filteredCards.length > 0}
+            checked={selectedCards.size === availableCards.length && availableCards.length > 0}
             onCheckedChange={toggleSelectAll}
             className="border-muted-foreground"
+            disabled={availableCards.length === 0}
           />
           <span className="text-sm text-muted-foreground">
-            {selectedCards.size > 0 ? `${selectedCards.size} selecionados` : 'Selecionar todos'}
+            {selectedCards.size > 0 ? `${selectedCards.size} selecionados` : `Selecionar disponíveis (${availableCards.length})`}
           </span>
+          {soldCardsCount > 0 && (
+            <span className="text-xs bg-destructive/20 text-destructive px-2 py-0.5 rounded-full">
+              {soldCardsCount} vendidos
+            </span>
+          )}
         </div>
 
         <div className="flex-1" />
@@ -167,6 +182,7 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
           variant="outline"
           onClick={() => setIsPriceDialogOpen(true)}
           className="border-portal-green/50 text-portal-green hover:bg-portal-green/10"
+          disabled={availableCards.length === 0}
         >
           <DollarSign className="h-4 w-4 mr-1" />
           Alterar Preços
@@ -188,43 +204,59 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
           size="sm"
           variant="destructive"
           onClick={() => setIsDeleteAllDialogOpen(true)}
+          disabled={availableCards.length === 0}
         >
           <Trash2 className="h-4 w-4 mr-1" />
-          Excluir Todos ({filteredCards.length})
+          Excluir Disponíveis ({availableCards.length})
         </Button>
       </div>
 
       {/* Card Selection List */}
       <div className="space-y-1 max-h-[400px] overflow-y-auto">
-        {filteredCards.map((card) => (
-          <div
-            key={card.id}
-            className={`p-2 rounded-lg border flex items-center gap-3 cursor-pointer transition-colors ${
-              selectedCards.has(card.id)
-                ? 'bg-portal-green/10 border-portal-green/30'
-                : 'bg-muted/30 border-border hover:bg-muted/50'
-            }`}
-            onClick={() => toggleSelectCard(card.id)}
-          >
-            <Checkbox
-              checked={selectedCards.has(card.id)}
-              onCheckedChange={() => toggleSelectCard(card.id)}
-              className="border-muted-foreground"
-            />
-            <div className="flex-1 min-w-0 flex items-center gap-4">
-              <span className="text-sm font-mono">****{card.cardNumber?.slice(-4)}</span>
-              {card.bankName && (
-                <span className="text-xs bg-muted px-2 py-0.5 rounded">{card.bankName}</span>
-              )}
-              {card.cardLevel && (
-                <span className="text-xs bg-space-purple/20 text-space-purple px-2 py-0.5 rounded">{card.cardLevel}</span>
-              )}
+        {filteredCards.map((card) => {
+          const isSold = card.stock === 0;
+          return (
+            <div
+              key={card.id}
+              className={`p-2 rounded-lg border flex items-center gap-3 transition-colors ${
+                isSold
+                  ? 'bg-destructive/10 border-destructive/30 cursor-not-allowed opacity-70'
+                  : selectedCards.has(card.id)
+                    ? 'bg-portal-green/10 border-portal-green/30 cursor-pointer'
+                    : 'bg-muted/30 border-border hover:bg-muted/50 cursor-pointer'
+              }`}
+              onClick={() => !isSold && toggleSelectCard(card.id)}
+            >
+              <Checkbox
+                checked={selectedCards.has(card.id)}
+                onCheckedChange={() => !isSold && toggleSelectCard(card.id)}
+                className="border-muted-foreground"
+                disabled={isSold}
+              />
+              <div className="flex-1 min-w-0 flex items-center gap-4">
+                <span className={`text-sm font-mono ${isSold ? 'line-through text-muted-foreground' : ''}`}>
+                  ****{card.cardNumber?.slice(-4)}
+                </span>
+                {isSold && (
+                  <span className="text-xs bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full font-bold">
+                    VENDIDO
+                  </span>
+                )}
+                {card.bankName && (
+                  <span className="text-xs bg-muted px-2 py-0.5 rounded">{card.bankName}</span>
+                )}
+                {card.cardLevel && (
+                  <span className={`text-xs px-2 py-0.5 rounded ${isSold ? 'bg-destructive/20 text-destructive' : 'bg-space-purple/20 text-space-purple'}`}>
+                    {card.cardLevel}
+                  </span>
+                )}
+              </div>
+              <span className={`font-orbitron text-sm font-bold ${isSold ? 'text-destructive line-through' : 'text-portal-green'}`}>
+                R$ {card.price.toFixed(2)}
+              </span>
             </div>
-            <span className="font-orbitron text-sm font-bold text-portal-green">
-              R$ {card.price.toFixed(2)}
-            </span>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Delete Selected Dialog */}
@@ -260,9 +292,15 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
       <Dialog open={isDeleteAllDialogOpen} onOpenChange={setIsDeleteAllDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-destructive">Excluir Todos os Cards {subcategory}</DialogTitle>
+            <DialogTitle className="text-destructive">Excluir Cards Disponíveis {subcategory}</DialogTitle>
             <DialogDescription>
-              Você está prestes a excluir TODOS os {filteredCards.length} cards da categoria {subcategory}. Esta ação não pode ser desfeita!
+              Você está prestes a excluir TODOS os {availableCards.length} cards disponíveis da categoria {subcategory}. 
+              {soldCardsCount > 0 && (
+                <span className="block mt-2 text-muted-foreground">
+                  Nota: {soldCardsCount} cards vendidos serão preservados no histórico.
+                </span>
+              )}
+              <span className="block mt-2 text-destructive font-medium">Esta ação não pode ser desfeita!</span>
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
@@ -272,14 +310,14 @@ export const CardsBulkManager = ({ cards, subcategory }: CardsBulkManagerProps) 
             <Button
               variant="destructive"
               onClick={handleDeleteAll}
-              disabled={deleteByCategory.isPending}
+              disabled={deleteByCategory.isPending || availableCards.length === 0}
             >
               {deleteByCategory.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : (
                 <Trash2 className="h-4 w-4 mr-2" />
               )}
-              Excluir Todos ({filteredCards.length})
+              Excluir Disponíveis ({availableCards.length})
             </Button>
           </DialogFooter>
         </DialogContent>

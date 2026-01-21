@@ -59,7 +59,7 @@ import {
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
-import { useCards, useCreateCard, useUpdateCard, useDeleteCard, useCreateMultipleCards, useDeleteMultipleCards, useDeleteCardsByCategory, useBulkUpdatePrice } from '@/hooks/useCards';
+import { useCards, useAllCards, useCreateCard, useUpdateCard, useDeleteCard, useCreateMultipleCards, useDeleteMultipleCards, useDeleteCardsByCategory, useBulkUpdatePrice } from '@/hooks/useCards';
 import { CardsBulkManager } from '@/components/admin/CardsBulkManager';
 import { useAllCardMixes, useCreateCardMix, useUpdateCardMix, useDeleteCardMix, CardMix } from '@/hooks/useCardMixes';
 import { useAllPurchases } from '@/hooks/usePurchases';
@@ -93,7 +93,7 @@ import DiplomaManager from '@/components/admin/DiplomaManager';
 
 const Admin = () => {
   const { user, isAdmin, logout, isLoading: authLoading } = useAuth();
-  const { data: cards = [], isLoading: cardsLoading } = useCards();
+  const { data: cards = [], isLoading: cardsLoading } = useAllCards();
   const { data: purchases = [], isLoading: purchasesLoading } = useAllPurchases();
   const { data: users = [], isLoading: usersLoading } = useAllUsers();
   const { data: cardMixes = [], isLoading: mixesLoading } = useAllCardMixes();
@@ -1262,28 +1262,45 @@ const Admin = () => {
                   <CardsBulkManager cards={cards} subcategory="FULLDADOS" />
 
                   <div className="grid gap-2">
-                    {cards.filter(c => c.category === 'INFO' && c.subcategory === 'FULLDADOS').map((card) => (
-                      <div key={card.id} className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-center gap-3">
-                        <CreditCard className="h-5 w-5 text-amber-500 shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">{card.name}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-xs text-muted-foreground">****{card.cardNumber?.slice(-4)}</p>
-                            {card.bankName && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{card.bankName}</span>}
-                            {card.cardLevel && <span className="text-xs bg-amber-500/20 text-amber-500 px-1.5 py-0.5 rounded">{card.cardLevel}</span>}
+                    {cards.filter(c => c.category === 'INFO' && c.subcategory === 'FULLDADOS').map((card) => {
+                      const isSold = card.stock === 0;
+                      return (
+                        <div key={card.id} className={`p-3 rounded-lg flex items-center gap-3 ${isSold ? 'bg-destructive/10 border border-destructive/30' : 'bg-amber-500/10 border border-amber-500/30'}`}>
+                          <CreditCard className={`h-5 w-5 shrink-0 ${isSold ? 'text-destructive' : 'text-amber-500'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm truncate">{card.name}</p>
+                              {isSold && (
+                                <span className="text-xs bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full font-bold animate-pulse">
+                                  VENDIDO
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-xs text-muted-foreground">****{card.cardNumber?.slice(-4)}</p>
+                              {card.bankName && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{card.bankName}</span>}
+                              {card.cardLevel && <span className={`text-xs px-1.5 py-0.5 rounded ${isSold ? 'bg-destructive/20 text-destructive' : 'bg-amber-500/20 text-amber-500'}`}>{card.cardLevel}</span>}
+                            </div>
+                          </div>
+                          <p className={`font-orbitron font-bold text-sm ${isSold ? 'text-destructive line-through' : 'text-amber-500'}`}>R$ {card.price.toFixed(2)}</p>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(card)} disabled={isSold}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive" 
+                              onClick={() => handleDeleteCard(card.id)} 
+                              disabled={deleteCard.isPending || isSold}
+                              title={isSold ? 'Não é possível excluir cards vendidos' : 'Excluir card'}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <p className="font-orbitron text-amber-500 font-bold text-sm">R$ {card.price.toFixed(2)}</p>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(card)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCard(card.id)} disabled={deleteCard.isPending}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {cards.filter(c => c.category === 'INFO' && c.subcategory === 'FULLDADOS').length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">Nenhum card FULLDADOS cadastrado.</p>
                     )}
@@ -1313,28 +1330,45 @@ const Admin = () => {
                   <CardsBulkManager cards={cards} subcategory="AUXILIAR" />
 
                   <div className="grid gap-2">
-                    {cards.filter(c => c.category === 'INFO' && c.subcategory === 'AUXILIAR').map((card) => (
-                      <div key={card.id} className="p-3 rounded-lg bg-portal-cyan/10 border border-portal-cyan/30 flex items-center gap-3">
-                        <CreditCard className="h-5 w-5 text-portal-cyan shrink-0" />
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium text-sm truncate">****{card.cardNumber?.slice(-4)}</p>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <p className="text-xs text-muted-foreground">{card.cardExpiry}</p>
-                            {card.bankName && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{card.bankName}</span>}
-                            {card.cardLevel && <span className="text-xs bg-portal-cyan/20 text-portal-cyan px-1.5 py-0.5 rounded">{card.cardLevel}</span>}
+                    {cards.filter(c => c.category === 'INFO' && c.subcategory === 'AUXILIAR').map((card) => {
+                      const isSold = card.stock === 0;
+                      return (
+                        <div key={card.id} className={`p-3 rounded-lg flex items-center gap-3 ${isSold ? 'bg-destructive/10 border border-destructive/30' : 'bg-portal-cyan/10 border border-portal-cyan/30'}`}>
+                          <CreditCard className={`h-5 w-5 shrink-0 ${isSold ? 'text-destructive' : 'text-portal-cyan'}`} />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="font-medium text-sm truncate">****{card.cardNumber?.slice(-4)}</p>
+                              {isSold && (
+                                <span className="text-xs bg-destructive text-destructive-foreground px-2 py-0.5 rounded-full font-bold animate-pulse">
+                                  VENDIDO
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <p className="text-xs text-muted-foreground">{card.cardExpiry}</p>
+                              {card.bankName && <span className="text-xs bg-muted px-1.5 py-0.5 rounded">{card.bankName}</span>}
+                              {card.cardLevel && <span className={`text-xs px-1.5 py-0.5 rounded ${isSold ? 'bg-destructive/20 text-destructive' : 'bg-portal-cyan/20 text-portal-cyan'}`}>{card.cardLevel}</span>}
+                            </div>
+                          </div>
+                          <p className={`font-orbitron font-bold text-sm ${isSold ? 'text-destructive line-through' : 'text-portal-cyan'}`}>R$ {card.price.toFixed(2)}</p>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(card)} disabled={isSold}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-8 w-8 text-destructive" 
+                              onClick={() => handleDeleteCard(card.id)} 
+                              disabled={deleteCard.isPending || isSold}
+                              title={isSold ? 'Não é possível excluir cards vendidos' : 'Excluir card'}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <p className="font-orbitron text-portal-cyan font-bold text-sm">R$ {card.price.toFixed(2)}</p>
-                        <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenDialog(card)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDeleteCard(card.id)} disabled={deleteCard.isPending}>
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {cards.filter(c => c.category === 'INFO' && c.subcategory === 'AUXILIAR').length === 0 && (
                       <p className="text-sm text-muted-foreground text-center py-4">Nenhum card AUXILIAR cadastrado.</p>
                     )}

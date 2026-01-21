@@ -8,7 +8,7 @@ import { Card as CardType } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBalance, useUpdateBalance } from '@/hooks/useBalance';
 import { useCreatePurchase, Purchase } from '@/hooks/usePurchases';
-import { useDeleteCard } from '@/hooks/useCards';
+import { useMarkCardAsSold } from '@/hooks/useCards';
 import { useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 
@@ -25,7 +25,7 @@ const PurchaseDialog = forwardRef<HTMLDivElement, PurchaseDialogProps>(({ card, 
   const { data: balance = 0, refetch: refetchBalance } = useBalance(user?.id);
   const updateBalance = useUpdateBalance();
   const createPurchase = useCreatePurchase();
-  const deleteCard = useDeleteCard();
+  const markCardAsSold = useMarkCardAsSold();
   const [isProcessing, setIsProcessing] = useState(false);
   const [step, setStep] = useState<'terms' | 'select' | 'confirm' | 'success'>('terms');
   const [purchasedCard, setPurchasedCard] = useState<Purchase | null>(null);
@@ -93,10 +93,10 @@ const PurchaseDialog = forwardRef<HTMLDivElement, PurchaseDialogProps>(({ card, 
 
       console.log('Balance updated');
 
-      // Step 3: DELETE the card from available cards (not just update stock)
-      await deleteCard.mutateAsync(card.id);
+      // Step 3: Mark the card as SOLD (stock = 0) instead of deleting
+      await markCardAsSold.mutateAsync(card.id);
 
-      console.log('Card deleted from available');
+      console.log('Card marked as sold');
 
       // Force refetch to update UI immediately
       await Promise.all([
