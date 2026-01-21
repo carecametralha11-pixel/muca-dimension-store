@@ -190,11 +190,47 @@ export const useUpdateCard = () => {
   });
 };
 
+// Hook para marcar card como vendido (stock = 0) - usado no fluxo de compra
+export const useMarkCardAsSold = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from('cards')
+        .update({ stock: 0 })
+        .eq('id', id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cards'] });
+      queryClient.invalidateQueries({ queryKey: ['all-cards'] });
+    },
+    onError: (error: any) => {
+      console.error('Error marking card as sold:', error);
+    },
+  });
+};
+
 export const useDeleteCard = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: string) => {
+      // First check if the card is sold (stock = 0)
+      const { data: card, error: fetchError } = await supabase
+        .from('cards')
+        .select('stock')
+        .eq('id', id)
+        .single();
+
+      if (fetchError) throw fetchError;
+      
+      if (card && card.stock === 0) {
+        throw new Error('Não é possível excluir um card vendido');
+      }
+
       const { error } = await supabase
         .from('cards')
         .delete()
@@ -205,25 +241,27 @@ export const useDeleteCard = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards'] });
       queryClient.invalidateQueries({ queryKey: ['all-cards'] });
-      // Note: Don't show toast here as it may be called from purchase flow
+      toast.success('Card removido com sucesso!');
     },
     onError: (error: any) => {
       console.error('Error deleting card:', error);
-      // Note: Don't show toast here as error handling is done in calling code
+      toast.error(error.message || 'Erro ao remover card.');
     },
   });
 };
 
-// Hook para deletar múltiplos cards
+// Hook para deletar múltiplos cards (apenas cards disponíveis, não vendidos)
 export const useDeleteMultipleCards = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (ids: string[]) => {
+      // Only delete cards with stock > 0 (not sold)
       const { error } = await supabase
         .from('cards')
         .delete()
-        .in('id', ids);
+        .in('id', ids)
+        .gt('stock', 0);
 
       if (error) throw error;
       return ids.length;
@@ -240,7 +278,7 @@ export const useDeleteMultipleCards = () => {
   });
 };
 
-// Hook para deletar cards por categoria/subcategoria
+// Hook para deletar cards por categoria/subcategoria (apenas cards disponíveis, não vendidos)
 export const useDeleteCardsByCategory = () => {
   const queryClient = useQueryClient();
 
@@ -254,6 +292,8 @@ export const useDeleteCardsByCategory = () => {
       if (subcategory) {
         query = query.eq('subcategory', subcategory);
       }
+      // Only delete cards with stock > 0 (not sold)
+      query = query.gt('stock', 0);
 
       const { error, count } = await query;
       if (error) throw error;
@@ -262,7 +302,7 @@ export const useDeleteCardsByCategory = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cards'] });
       queryClient.invalidateQueries({ queryKey: ['all-cards'] });
-      toast.success('Cards da categoria removidos!');
+      toast.success('Cards disponíveis da categoria removidos!');
     },
     onError: (error: any) => {
       console.error('Error deleting cards by category:', error);
