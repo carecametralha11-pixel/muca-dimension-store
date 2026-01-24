@@ -30,8 +30,10 @@ serve(async (req) => {
 
     const { amount } = await req.json();
     
-    if (!amount || amount < 1) {
-      throw new Error('Invalid amount');
+    const MINIMUM_DEPOSIT = 20;
+    
+    if (!amount || amount < MINIMUM_DEPOSIT) {
+      throw new Error(`O depósito mínimo é de R$ ${MINIMUM_DEPOSIT},00`);
     }
 
     const accessToken = Deno.env.get('MERCADO_PAGO_ACCESS_TOKEN');
