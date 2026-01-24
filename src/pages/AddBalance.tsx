@@ -128,9 +128,18 @@ const AddBalance = () => {
     return <Navigate to="/auth" replace />;
   }
 
+  const MINIMUM_DEPOSIT = 20;
+
   const handleGenerateQR = async () => {
-    if (!amount || parseFloat(amount) <= 0) {
+    const numericAmount = parseFloat(amount);
+    
+    if (!amount || numericAmount <= 0) {
       toast.error('Informe um valor válido');
+      return;
+    }
+
+    if (numericAmount < MINIMUM_DEPOSIT) {
+      toast.error(`O depósito mínimo é de R$ ${MINIMUM_DEPOSIT},00`);
       return;
     }
 
@@ -247,20 +256,21 @@ const AddBalance = () => {
 
                   {/* Custom amount */}
                   <div className="space-y-2">
-                    <label className="text-sm text-muted-foreground">Ou digite um valor:</label>
+                    <label className="text-sm text-muted-foreground">Ou digite um valor (mínimo R$ 20):</label>
                     <Input
                       type="number"
-                      placeholder="0,00"
+                      placeholder="20,00"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      min="1"
+                      min="20"
                     />
+                    <p className="text-xs text-muted-foreground">Depósito mínimo: R$ 20,00</p>
                   </div>
 
                   <Button 
                     onClick={handleGenerateQR} 
                     className="w-full"
-                    disabled={!amount || parseFloat(amount) <= 0 || isProcessing}
+                    disabled={!amount || parseFloat(amount) < 20 || isProcessing}
                   >
                     {isProcessing ? (
                       <>
